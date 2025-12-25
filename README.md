@@ -128,6 +128,19 @@ Les messages sont récupérés depuis un fichier JSON avec la structure suivante
 - **expiryDate** : Date/heure d'expiration au format ISO 8601 (String)
 - **content** : Contenu du message (String, peut contenir Markdown)
 
+### ⚠️ Validation du format JSON
+
+Le fichier JSON doit être **strictement valide**. Les erreurs courantes à éviter :
+
+- ❌ Virgule finale après le dernier élément d'un tableau ou objet
+- ❌ Guillemets simples au lieu de doubles (`'texte'` → `"texte"`)
+- ❌ Commentaires (non supportés en JSON)
+- ❌ Propriétés sans guillemets (`id:` → `"id":`)
+
+**Validation recommandée** : Utilisez un validateur JSON en ligne (jsonlint.com) ou votre éditeur de code avant de déployer.
+
+Si le fichier JSON est invalide, le composant affichera le message d'erreur configuré via la prop `errorMessage` et tentera l'URL de fallback.
+
 ## Fonctionnement
 
 ### 1. Récupération des messages
@@ -158,10 +171,25 @@ Un bouton dans la bannière ouvre une modale scrollable listant tous les message
 
 ### 7. Gestion des erreurs
 
-- Si les deux URLs (primaire et secondaire) échouent, un message d'erreur personnalisable s'affiche
+Le composant gère plusieurs types d'erreurs :
+
+**Erreurs réseau** :
+- Si l'URL primaire échoue, basculement automatique sur l'URL secondaire
+- Si les deux URLs échouent, affichage du message d'erreur personnalisable
+
+**Erreurs de parsing JSON** :
+- Si le JSON est invalide (erreur de syntaxe), traitement comme une erreur réseau
+- Tentative sur l'URL de fallback
+- Message d'erreur affiché si les deux fichiers sont invalides
+- Logs détaillés dans la console pour faciliter le débogage
+
+**Fichiers vides** :
+- Si le fichier est accessible mais vide (pas de messages), aucune alerte n'est affichée
+- Comportement normal : pas de bannière si aucun message disponible
+
+**Configuration** :
 - Le message d'erreur est configurable via la prop `errorMessage`
-- Si le fichier de messages est vide (mais accessible), aucune alerte n'est affichée
-- Les erreurs sont uniquement affichées en cas d'échec réseau ou de fichier inaccessible
+- Les erreurs sont loguées dans la console avec des détails précis
 
 ## Support Markdown
 

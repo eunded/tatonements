@@ -147,22 +147,32 @@ export default {
         // Essayer l'URL primaire
         const response = await fetch(props.primaryUrl)
         if (response.ok) {
-          const data = await response.json()
-          return { messages: data.messages || [], error: false }
+          try {
+            const data = await response.json()
+            return { messages: data.messages || [], error: false }
+          } catch (parseError) {
+            console.error('Erreur de parsing JSON (URL primaire):', parseError)
+            throw new Error('Invalid JSON in primary URL')
+          }
         }
         throw new Error('Primary URL failed')
       } catch (error) {
-        console.warn('Échec de l\'URL primaire, tentative avec l\'URL secondaire')
+        console.warn('Échec de l\'URL primaire, tentative avec l\'URL secondaire:', error.message)
         try {
           // Fallback sur l'URL secondaire
           const response = await fetch(props.secondaryUrl)
           if (response.ok) {
-            const data = await response.json()
-            return { messages: data.messages || [], error: false }
+            try {
+              const data = await response.json()
+              return { messages: data.messages || [], error: false }
+            } catch (parseError) {
+              console.error('Erreur de parsing JSON (URL secondaire):', parseError)
+              throw new Error('Invalid JSON in secondary URL')
+            }
           }
           throw new Error('Secondary URL failed')
         } catch (secondaryError) {
-          console.error('Impossible de récupérer les messages:', secondaryError)
+          console.error('Impossible de récupérer les messages:', secondaryError.message)
           fetchError.value = true
           return { messages: [], error: true }
         }
