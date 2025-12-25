@@ -1,0 +1,16 @@
+{
+  "messages": [
+    {
+      "id": "msg-backup-001",
+      "datetime": "2025-12-25T10:00:00Z",
+      "expiryDate": "2026-02-01T23:59:59Z",
+      "content": "⚠️ **Serveur de secours** - Vous consultez les messages depuis notre serveur de backup. Le service principal sera bientôt rétabli."
+    },
+    {
+      "id": "msg-backup-002",
+      "datetime": "2025-12-20T14:30:00Z",
+      "expiryDate": "2026-01-31T23:59:59Z",
+      "content": "Bienvenue sur l'application ! 👋 Ce message provient du serveur de secours."
+    }
+  ]
+}
