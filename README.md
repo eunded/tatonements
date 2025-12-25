@@ -16,6 +16,8 @@ Un composant Vue3 autonome et configurable pour afficher des messages d'informat
 
 ## Installation
 
+### Installation complète du projet
+
 ```bash
 # Installer les dépendances
 npm install
@@ -26,6 +28,43 @@ npm run dev
 # Build pour la production
 npm run build
 ```
+
+### Utilisation du composant dans un projet existant
+
+Si vous souhaitez intégrer uniquement le composant `MessageBanner.vue` dans votre projet Vue3 existant :
+
+1. **Copier le fichier du composant** :
+   ```bash
+   # Copier MessageBanner.vue dans votre projet
+   cp src/components/MessageBanner.vue /votre-projet/src/components/
+   ```
+
+2. **Installer les dépendances requises** :
+   ```bash
+   # Vue 3 (si pas déjà installé)
+   npm install vue@^3.4.0
+
+   # Marked (pour le support Markdown)
+   npm install marked@^11.1.0
+
+   # SASS (pour les styles SCSS)
+   npm install -D sass@^1.69.0
+   ```
+
+3. **Importer et utiliser le composant** :
+   ```vue
+   <script>
+   import MessageBanner from '@/components/MessageBanner.vue'
+
+   export default {
+     components: {
+       MessageBanner
+     }
+   }
+   </script>
+   ```
+
+**Note** : Le composant nécessite **Marked** pour le support Markdown. Si vous n'utilisez pas le Markdown (`enableMarkdown: false`), l'installation de Marked reste nécessaire car le composant l'importe. Pour éviter cette dépendance, vous devriez modifier le composant pour importer Marked conditionnellement.
 
 ## Utilisation
 
@@ -203,6 +242,21 @@ Le composant utilise SCSS avec un style modulaire. Toutes les classes sont scop�
 - **SCSS** - Préprocesseur CSS
 - **Marked** - Parser Markdown
 - **Composition API** - API moderne de Vue 3 (setup(), ref(), computed(), onMounted())
+
+### Dépendances
+
+Le composant requiert les dépendances suivantes :
+
+**Production** :
+- `vue@^3.4.0` - Framework Vue 3
+- `marked@^11.1.0` - Parser Markdown (requis même si `enableMarkdown: false`)
+
+**Développement** :
+- `@vitejs/plugin-vue@^5.0.0` - Plugin Vite pour Vue
+- `sass@^1.69.0` - Compilateur SCSS
+- `vite@^5.0.0` - Build tool
+
+Voir le fichier `package.json` pour les versions exactes.
 
 ### Note sur l'API Composition
 
