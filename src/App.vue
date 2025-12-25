@@ -1,17 +1,26 @@
 <template>
   <div class="app-container">
-    <!-- Composant de bannière de messages -->
+    <!-- Exemple mode bannière -->
     <MessageBanner
+      v-if="displayMode === 'banner'"
       :primary-url="primaryUrl"
       :secondary-url="secondaryUrl"
       :enable-markdown="true"
       :full-markdown="false"
       :max-history="10"
       :position="bannerPosition"
-      :floating-button="floatingButton"
+      display-mode="banner"
       :show-no-message-info="true"
       error-message="⚠️ Impossible de charger les messages. Veuillez vérifier votre connexion."
-    />
+      :banner-class="customBannerClass"
+      :button-class="customButtonClass"
+      :reopen-button-class="customReopenButtonClass"
+    >
+      <template #reopen-button-content>
+        <span>💬</span>
+        <span v-if="showButtonText">Messages</span>
+      </template>
+    </MessageBanner>
 
     <!-- Contenu de l'application -->
     <main class="main-content">
@@ -19,48 +28,31 @@
         <h1>Message Banner - Vue3 PWA</h1>
 
         <div class="demo-section">
-          <h2>Démonstration du composant</h2>
-          <p>
-            Cette application démontre l'utilisation du composant <code>MessageBanner</code>
-            dans une PWA Vue3.
-          </p>
+          <h2>Démonstration des modes d'affichage</h2>
 
-          <div class="features">
-            <div class="feature-card">
-              <div class="feature-icon">📱</div>
-              <h3>Responsive</h3>
-              <p>Optimisé pour mobile et desktop</p>
-            </div>
+          <!-- Exemple mode inline -->
+          <div class="inline-demo">
+            <h3>Mode Inline</h3>
+            <p>Le message s'affiche directement dans la page :</p>
 
-            <div class="feature-card">
-              <div class="feature-icon">💾</div>
-              <h3>Persistance</h3>
-              <p>Les messages lus sont mémorisés</p>
-            </div>
-
-            <div class="feature-card">
-              <div class="feature-icon">🔄</div>
-              <h3>Fallback</h3>
-              <p>Système de secours automatique</p>
-            </div>
-
-            <div class="feature-card">
-              <div class="feature-icon">📋</div>
-              <h3>Historique</h3>
-              <p>Consultation des messages précédents</p>
-            </div>
-
-            <div class="feature-card">
-              <div class="feature-icon">🎨</div>
-              <h3>Markdown</h3>
-              <p>Support du formatage simple ou complet</p>
-            </div>
-
-            <div class="feature-card">
-              <div class="feature-icon">⏰</div>
-              <h3>Expiration</h3>
-              <p>Gestion automatique des dates de validité</p>
-            </div>
+            <MessageBanner
+              v-if="displayMode === 'inline'"
+              :primary-url="primaryUrl"
+              :secondary-url="secondaryUrl"
+              :enable-markdown="true"
+              :full-markdown="false"
+              :max-history="10"
+              display-mode="inline"
+              :show-no-message-info="true"
+              error-message="⚠️ Impossible de charger les messages."
+              :inline-class="customInlineClass"
+              :button-class="customButtonClass"
+              :reopen-button-class="customReopenButtonClass"
+            >
+              <template #reopen-button-content>
+                💬 Voir les messages
+              </template>
+            </MessageBanner>
           </div>
         </div>
 
@@ -69,6 +61,28 @@
 
           <div class="config-panel">
             <div class="config-item">
+              <label>Mode d'affichage :</label>
+              <div class="radio-group">
+                <label>
+                  <input
+                    type="radio"
+                    value="banner"
+                    v-model="displayMode"
+                  />
+                  Bannière fixe (top/bottom)
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    value="inline"
+                    v-model="displayMode"
+                  />
+                  Inline (dans la page)
+                </label>
+              </div>
+            </div>
+
+            <div class="config-item" v-if="displayMode === 'banner'">
               <label>Position de la bannière :</label>
               <div class="radio-group">
                 <label>
@@ -94,9 +108,9 @@
               <label>
                 <input
                   type="checkbox"
-                  v-model="floatingButton"
+                  v-model="showButtonText"
                 />
-                Bouton flottant (au lieu d'une barre normale)
+                Afficher le texte du bouton de réouverture
               </label>
             </div>
 
@@ -123,29 +137,59 @@
         </div>
 
         <div class="demo-section">
-          <h2>Format des messages JSON</h2>
-          <pre class="code-block"><code>{
-  "messages": [
-    {
-      "id": "msg-001",
-      "datetime": "2025-12-20T10:00:00Z",
-      "expiryDate": "2026-01-20T23:59:59Z",
-      "content": "Votre message ici avec **formatage** et [liens](https://example.com)"
-    }
-  ]
-}</code></pre>
+          <h2>Personnalisation CSS</h2>
+          <p>Exemple de personnalisation avec des classes CSS depuis le parent :</p>
+
+          <pre class="code-block"><code>&lt;MessageBanner
+  display-mode="banner"
+  banner-class="my-custom-banner"
+  button-class="my-custom-button"
+  reopen-button-class="my-custom-reopen-btn"
+&gt;
+  &lt;template #reopen-button-content&gt;
+    💬 Voir les messages
+  &lt;/template&gt;
+&lt;/MessageBanner&gt;
+
+&lt;style&gt;
+.my-custom-banner {
+  background: linear-gradient(to right, #ff6b6b, #ee5a6f);
+}
+
+.my-custom-button {
+  border-radius: 20px;
+  font-weight: bold;
+}
+
+.my-custom-reopen-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  border-radius: 50px;
+  padding: 1rem 2rem;
+}
+&lt;/style&gt;</code></pre>
         </div>
 
         <div class="demo-section">
           <h2>Utilisation du composant</h2>
+
+          <h3>Mode Bannière</h3>
           <pre class="code-block"><code>&lt;MessageBanner
   primary-url="/messages-primary.json"
   secondary-url="/messages-secondary.json"
   :enable-markdown="true"
-  :full-markdown="false"
-  :max-history="10"
+  display-mode="banner"
   position="top"
-  :floating-button="false"
+  error-message="Impossible de charger les messages."
+/&gt;</code></pre>
+
+          <h3>Mode Inline</h3>
+          <pre class="code-block"><code>&lt;MessageBanner
+  primary-url="/messages-primary.json"
+  secondary-url="/messages-secondary.json"
+  :enable-markdown="true"
+  display-mode="inline"
   error-message="Impossible de charger les messages."
 /&gt;</code></pre>
         </div>
@@ -175,6 +219,18 @@
                 <td>URL de secours si la primaire échoue</td>
               </tr>
               <tr>
+                <td><code>displayMode</code></td>
+                <td>String</td>
+                <td>'banner'</td>
+                <td>Mode d'affichage : 'banner' (fixe) ou 'inline' (dans la page)</td>
+              </tr>
+              <tr>
+                <td><code>position</code></td>
+                <td>String</td>
+                <td>'top'</td>
+                <td>Position de la bannière (si mode=banner) : 'top' ou 'bottom'</td>
+              </tr>
+              <tr>
                 <td><code>enableMarkdown</code></td>
                 <td>Boolean</td>
                 <td>false</td>
@@ -193,28 +249,64 @@
                 <td>Nombre de messages dans l'historique</td>
               </tr>
               <tr>
-                <td><code>position</code></td>
-                <td>String</td>
-                <td>'top'</td>
-                <td>Position de la bannière : 'top' ou 'bottom'</td>
-              </tr>
-              <tr>
-                <td><code>floatingButton</code></td>
-                <td>Boolean</td>
-                <td>false</td>
-                <td>Bouton de réouverture flottant (sinon barre normale)</td>
-              </tr>
-              <tr>
                 <td><code>errorMessage</code></td>
                 <td>String</td>
                 <td>'Impossible de charger...'</td>
-                <td>Message affiché si les deux URLs de récupération échouent</td>
+                <td>Message affiché si les deux URLs échouent</td>
               </tr>
               <tr>
                 <td><code>showNoMessageInfo</code></td>
                 <td>Boolean</td>
                 <td>true</td>
                 <td>Afficher un message d'information si aucun message disponible</td>
+              </tr>
+              <tr>
+                <td><code>bannerClass</code></td>
+                <td>String</td>
+                <td>''</td>
+                <td>Classe CSS personnalisée pour la bannière</td>
+              </tr>
+              <tr>
+                <td><code>inlineClass</code></td>
+                <td>String</td>
+                <td>''</td>
+                <td>Classe CSS personnalisée pour le message inline</td>
+              </tr>
+              <tr>
+                <td><code>inlineContainerClass</code></td>
+                <td>String</td>
+                <td>''</td>
+                <td>Classe CSS personnalisée pour le conteneur inline</td>
+              </tr>
+              <tr>
+                <td><code>buttonClass</code></td>
+                <td>String</td>
+                <td>''</td>
+                <td>Classe CSS personnalisée pour les boutons (Lu, Historique, Fermer)</td>
+              </tr>
+              <tr>
+                <td><code>reopenButtonClass</code></td>
+                <td>String</td>
+                <td>''</td>
+                <td>Classe CSS personnalisée pour le bouton de réouverture</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="demo-section">
+          <h2>Slots disponibles</h2>
+          <table class="props-table">
+            <thead>
+              <tr>
+                <th>Slot</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>reopen-button-content</code></td>
+                <td>Contenu du bouton de réouverture. Par défaut : "💬 Messages"</td>
               </tr>
             </tbody>
           </table>
@@ -234,16 +326,28 @@ export default {
     MessageBanner
   },
   setup() {
+    const displayMode = ref('banner')
     const bannerPosition = ref('top')
-    const floatingButton = ref(false)
+    const showButtonText = ref(true)
     const primaryUrl = ref('/messages-primary.json')
     const secondaryUrl = ref('/messages-secondary.json')
 
+    // Classes personnalisées (vides par défaut, utilisateur peut les remplir)
+    const customBannerClass = ref('')
+    const customInlineClass = ref('')
+    const customButtonClass = ref('')
+    const customReopenButtonClass = ref('')
+
     return {
+      displayMode,
       bannerPosition,
-      floatingButton,
+      showButtonText,
       primaryUrl,
-      secondaryUrl
+      secondaryUrl,
+      customBannerClass,
+      customInlineClass,
+      customButtonClass,
+      customReopenButtonClass
     }
   }
 }
@@ -289,6 +393,13 @@ h2 {
   padding-bottom: 0.5rem;
 }
 
+h3 {
+  color: #667eea;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 1.2rem;
+}
+
 .demo-section {
   background: white;
   border-radius: 12px;
@@ -301,40 +412,11 @@ h2 {
   }
 }
 
-.features {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
-  margin-top: 1.5rem;
-}
-
-.feature-card {
-  text-align: center;
-  padding: 1.5rem;
+.inline-demo {
   background: #f8f9fa;
+  padding: 1.5rem;
   border-radius: 8px;
-  transition: transform 0.2s;
-
-  &:hover {
-    transform: translateY(-4px);
-  }
-}
-
-.feature-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-}
-
-.feature-card h3 {
-  color: #667eea;
-  margin-bottom: 0.5rem;
-  font-size: 1.2rem;
-}
-
-.feature-card p {
-  color: #666;
-  font-size: 0.9rem;
-  margin: 0;
+  margin-top: 1rem;
 }
 
 .config-panel {
@@ -361,6 +443,7 @@ h2 {
 .radio-group {
   display: flex;
   gap: 1.5rem;
+  flex-wrap: wrap;
 
   label {
     display: flex;
@@ -371,7 +454,8 @@ h2 {
     cursor: pointer;
   }
 
-  input[type="radio"] {
+  input[type="radio"],
+  input[type="checkbox"] {
     cursor: pointer;
   }
 }
