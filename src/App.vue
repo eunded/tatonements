@@ -10,7 +10,8 @@
       :max-history="10"
       :position="bannerPosition"
       display-mode="banner"
-      :show-no-message-info="true"
+      :auto-open="autoOpen"
+      :auto-open-when-empty="autoOpenWhenEmpty"
       error-message="⚠️ Impossible de charger les messages. Veuillez vérifier votre connexion."
       :banner-class="customBannerClass"
       :button-class="customButtonClass"
@@ -43,7 +44,8 @@
               :full-markdown="false"
               :max-history="10"
               display-mode="inline"
-              :show-no-message-info="true"
+              :auto-open="autoOpen"
+              :auto-open-when-empty="autoOpenWhenEmpty"
               error-message="⚠️ Impossible de charger les messages."
               :inline-class="customInlineClass"
               :button-class="customButtonClass"
@@ -255,10 +257,16 @@
                 <td>Message affiché si les deux URLs échouent</td>
               </tr>
               <tr>
-                <td><code>showNoMessageInfo</code></td>
+                <td><code>autoOpen</code></td>
                 <td>Boolean</td>
                 <td>true</td>
-                <td>Afficher un message d'information si aucun message disponible</td>
+                <td>Ouvrir automatiquement la bannière au montage du composant</td>
+              </tr>
+              <tr>
+                <td><code>autoOpenWhenEmpty</code></td>
+                <td>Boolean</td>
+                <td>true</td>
+                <td>Si autoOpen=true et aucun message, afficher quand même un placeholder</td>
               </tr>
               <tr>
                 <td><code>bannerClass</code></td>
@@ -331,6 +339,8 @@ export default {
     const showButtonText = ref(true)
     const primaryUrl = ref('/messages-primary.json')
     const secondaryUrl = ref('/messages-secondary.json')
+    const autoOpen = ref(true)
+    const autoOpenWhenEmpty = ref(true)
 
     // Classes personnalisées (vides par défaut, utilisateur peut les remplir)
     const customBannerClass = ref('')
@@ -344,6 +354,8 @@ export default {
       showButtonText,
       primaryUrl,
       secondaryUrl,
+      autoOpen,
+      autoOpenWhenEmpty,
       customBannerClass,
       customInlineClass,
       customButtonClass,

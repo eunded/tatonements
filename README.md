@@ -75,13 +75,20 @@ export default {
       secondary-url="/messages-secondary.json"
       display-mode="inline"
       inline-class="mon-message-custom"
-      :show-no-message-info="false"
+      :auto-open="false"
+      :auto-open-when-empty="true"
     />
   </div>
 </template>
 ```
 
-**Note importante** : Pour passer des booléens, utilisez `:show-no-message-info="false"` (avec `:`), pas `show-no-message-info="false"` qui passerait la string `"false"`.
+**Note importante** : Pour passer des booléens, utilisez `:auto-open="false"` (avec `:`), pas `auto-open="false"` qui passerait la string `"false"`.
+
+**Comportement autoOpen** :
+- `autoOpen=false` : La bannière reste fermée au montage, seul le bouton est visible
+- `autoOpen=true` + `autoOpenWhenEmpty=false` : Ouvre uniquement s'il y a des messages
+- `autoOpen=true` + `autoOpenWhenEmpty=true` : Ouvre toujours, avec placeholder si vide
+- Au clic sur le bouton de réouverture : **toujours** affiche la bannière (ignore les props)
 
 ### Personnalisation CSS
 
@@ -136,7 +143,9 @@ export default {
 | `fullMarkdown` | Boolean | `false` | Markdown complet (sinon simple : liens, gras, italique) |
 | `maxHistory` | Number | `10` | Nombre de messages affichés dans l'historique |
 | `errorMessage` | String | `'Impossible de charger...'` | Message affiché si les deux URLs échouent |
-| `showNoMessageInfo` | Boolean | `true` | Afficher un message d'information si aucun message disponible |
+| **Comportement** | | | |
+| `autoOpen` | Boolean | `true` | Ouvrir automatiquement la bannière au montage du composant |
+| `autoOpenWhenEmpty` | Boolean | `true` | Si `autoOpen=true` et aucun message, afficher quand même un placeholder |
 | **Personnalisation CSS** | | | |
 | `bannerClass` | String | `''` | Classe CSS personnalisée pour la bannière (mode banner) |
 | `inlineClass` | String | `''` | Classe CSS personnalisée pour le message inline (mode inline) |
@@ -246,10 +255,11 @@ Affiche les messages directement à l'emplacement du composant dans le DOM.
       :enable-markdown="true"
       :full-markdown="false"
       :max-history="20"
-      
+
       error-message="⚠️ Serveur indisponible. Réessayez plus tard."
-      :show-no-message-info="false"
-      
+      :auto-open="true"
+      :auto-open-when-empty="false"
+
       banner-class="custom-banner"
       button-class="custom-btn"
       reopen-button-class="custom-reopen"
@@ -290,18 +300,25 @@ Affiche les messages directement à l'emplacement du composant dans le DOM.
 
 ## Gestion des erreurs
 
-**Fichiers vides** :
-- Pas d'erreur levée
-- Message d'info si `showNoMessageInfo: true`
+**Fichiers vides ou absents (404)** :
+- Pas d'erreur levée (comportement normal)
+- Message d'info affiché si `autoOpen=true` et `autoOpenWhenEmpty=true`
+- Bannière fermée si `autoOpen=false` ou `autoOpenWhenEmpty=false`
 
 **JSON invalide** :
 - Tentative sur URL de fallback
 - Message d'erreur si les deux échouent
+- Message affiché selon `autoOpen` et `autoOpenWhenEmpty`
 - Logs détaillés dans la console
 
 **Erreurs réseau** :
 - Basculement automatique URL primaire → secondaire
-- Message d'erreur personnalisable
+- Message d'erreur personnalisable via prop `errorMessage`
+- Comportement d'affichage contrôlé par `autoOpen` et `autoOpenWhenEmpty`
+
+**Au clic sur le bouton de réouverture** :
+- La bannière s'ouvre **toujours** (ignore les props `autoOpen` et `autoOpenWhenEmpty`)
+- Affiche un message s'il existe, sinon "Aucun message disponible pour le moment."
 
 ## Technologies utilisées
 

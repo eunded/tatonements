@@ -154,7 +154,11 @@ export default {
       type: String,
       default: 'Impossible de charger les messages. Veuillez réessayer plus tard.'
     },
-    showNoMessageInfo: {
+    autoOpen: {
+      type: Boolean,
+      default: true
+    },
+    autoOpenWhenEmpty: {
       type: Boolean,
       default: true
     },
@@ -338,10 +342,28 @@ export default {
       const result = await fetchMessages()
       hasEverFetched.value = true
 
-      // Erreur de récupération des messages
-      if (result.error && result.messages.length === 0) {
-        // Afficher le message d'erreur uniquement si showNoMessageInfo est true
-        if (props.showNoMessageInfo) {
+      messages.value = filterValidMessages(result.messages)
+
+      // Si autoOpen = false, ne rien ouvrir au montage
+      if (!props.autoOpen) {
+        showBanner.value = false
+        currentMessage.value = null
+        return
+      }
+
+      // autoOpen = true : vérifier si on a des messages
+      if (messages.value.length > 0) {
+        // Des messages existent : ouvrir avec le premier message
+        currentMessage.value = messages.value[0]
+        showBanner.value = true
+        return
+      }
+
+      // Aucun message disponible
+      // Si autoOpenWhenEmpty = true, ouvrir avec message placeholder
+      if (props.autoOpenWhenEmpty) {
+        // Erreur de récupération
+        if (result.error) {
           currentMessage.value = {
             id: 'error-message',
             datetime: new Date().toISOString(),
@@ -349,38 +371,21 @@ export default {
             content: props.errorMessage,
             isError: true
           }
-          showBanner.value = true
         } else {
-          // Si showNoMessageInfo est false, ne rien afficher
-          showBanner.value = false
-          currentMessage.value = null
-        }
-        return
-      }
-
-      messages.value = filterValidMessages(result.messages)
-
-      // Pas de messages mais pas d'erreur non plus
-      if (messages.value.length === 0 && props.showNoMessageInfo) {
-        currentMessage.value = {
-          id: 'no-message-info',
-          datetime: new Date().toISOString(),
-          expiryDate: new Date(Date.now() + 3600000).toISOString(),
-          content: 'Aucun message disponible pour le moment.',
-          isInfo: true
+          // Pas d'erreur, juste pas de messages
+          currentMessage.value = {
+            id: 'no-message-info',
+            datetime: new Date().toISOString(),
+            expiryDate: new Date(Date.now() + 3600000).toISOString(),
+            content: 'Aucun message disponible pour le moment.',
+            isInfo: true
+          }
         }
         showBanner.value = true
-        return
-      }
-
-      if (messages.value.length === 0) {
-        return
-      }
-
-      const unreadMessage = findUnreadMessage(messages.value)
-      if (unreadMessage) {
-        currentMessage.value = unreadMessage
-        showBanner.value = true
+      } else {
+        // autoOpenWhenEmpty = false : rester fermé, juste afficher le bouton
+        showBanner.value = false
+        currentMessage.value = null
       }
     }
 
@@ -409,12 +414,13 @@ export default {
 
     // Rouvrir la bannière
     const reopenBanner = () => {
+      // Au clic, TOUJOURS ouvrir (ignore autoOpen et autoOpenWhenEmpty)
       if (messages.value.length > 0) {
+        // Des messages existent : afficher le premier
         currentMessage.value = messages.value[0]
         showBanner.value = true
-      } else if (fetchError.value) {
-        initMessages()
-      } else if (hasEverFetched.value && props.showNoMessageInfo) {
+      } else {
+        // Aucun message : toujours afficher un placeholder
         currentMessage.value = {
           id: 'no-message-info',
           datetime: new Date().toISOString(),
@@ -423,8 +429,6 @@ export default {
           isInfo: true
         }
         showBanner.value = true
-      } else {
-        initMessages()
       }
     }
 
