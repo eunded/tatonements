@@ -104,6 +104,10 @@ export default {
     errorMessage: {
       type: String,
       default: 'Impossible de charger les messages. Veuillez réessayer plus tard.'
+    },
+    showNoMessageInfo: {
+      type: Boolean,
+      default: true
     }
   },
   setup(props) {
@@ -113,6 +117,7 @@ export default {
     const showHistoryModal = ref(false)
     const lastReadMessageId = ref(null)
     const fetchError = ref(false)
+    const hasEverFetched = ref(false)
 
     // Clé pour localStorage - ne garde que le dernier message lu
     const STORAGE_KEY = 'message-banner-last-read'
@@ -148,7 +153,12 @@ export default {
         const response = await fetch(props.primaryUrl)
         if (response.ok) {
           try {
-            const data = await response.json()
+            const text = await response.text()
+            // Gérer le cas du fichier vide
+            if (!text || text.trim() === '') {
+              return { messages: [], error: false }
+            }
+            const data = JSON.parse(text)
             return { messages: data.messages || [], error: false }
           } catch (parseError) {
             console.error('Erreur de parsing JSON (URL primaire):', parseError)
@@ -163,7 +173,12 @@ export default {
           const response = await fetch(props.secondaryUrl)
           if (response.ok) {
             try {
-              const data = await response.json()
+              const text = await response.text()
+              // Gérer le cas du fichier vide
+              if (!text || text.trim() === '') {
+                return { messages: [], error: false }
+              }
+              const data = JSON.parse(text)
               return { messages: data.messages || [], error: false }
             } catch (parseError) {
               console.error('Erreur de parsing JSON (URL secondaire):', parseError)
@@ -210,6 +225,7 @@ export default {
     // Initialiser les messages
     const initMessages = async () => {
       const result = await fetchMessages()
+      hasEverFetched.value = true
 
       // Si erreur de fetch, afficher le message d'erreur uniquement s'il y a vraiment une erreur
       if (result.error && result.messages.length === 0) {
@@ -227,7 +243,20 @@ export default {
 
       messages.value = filterValidMessages(result.messages)
 
-      // Ne pas afficher de bannière si le fichier est vide (pas d'erreur)
+      // Si aucun message disponible et que l'option est activée, afficher un message d'info
+      if (messages.value.length === 0 && props.showNoMessageInfo) {
+        currentMessage.value = {
+          id: 'no-message-info',
+          datetime: new Date().toISOString(),
+          expiryDate: new Date(Date.now() + 3600000).toISOString(), // 1 heure
+          content: 'Aucun message disponible pour le moment.',
+          isInfo: true
+        }
+        showBanner.value = true
+        return
+      }
+
+      // Si aucun message et l'option est désactivée, ne rien afficher
       if (messages.value.length === 0) {
         return
       }
@@ -241,7 +270,7 @@ export default {
 
     // Marquer un message comme lu
     const markAsRead = () => {
-      if (currentMessage.value && !currentMessage.value.isError) {
+      if (currentMessage.value && !currentMessage.value.isError && !currentMessage.value.isInfo) {
         // Sauvegarder uniquement le dernier message lu
         saveLastReadMessage(currentMessage.value.id)
         showBanner.value = false
@@ -254,8 +283,8 @@ export default {
             showBanner.value = true
           }, 300)
         }
-      } else if (currentMessage.value && currentMessage.value.isError) {
-        // Pour un message d'erreur, on ferme juste la bannière
+      } else if (currentMessage.value && (currentMessage.value.isError || currentMessage.value.isInfo)) {
+        // Pour un message d'erreur ou d'info, on ferme juste la bannière
         showBanner.value = false
       }
     }
@@ -272,6 +301,19 @@ export default {
         showBanner.value = true
       } else if (fetchError.value) {
         // Si erreur de fetch, réafficher le message d'erreur
+        initMessages()
+      } else if (hasEverFetched.value && props.showNoMessageInfo) {
+        // Si pas de messages mais fetch réussi, afficher le message d'info
+        currentMessage.value = {
+          id: 'no-message-info',
+          datetime: new Date().toISOString(),
+          expiryDate: new Date(Date.now() + 3600000).toISOString(),
+          content: 'Aucun message disponible pour le moment.',
+          isInfo: true
+        }
+        showBanner.value = true
+      } else {
+        // Sinon, réessayer de fetch les messages
         initMessages()
       }
     }
@@ -341,7 +383,7 @@ export default {
       return formatMessageContent(currentMessage.value.content)
     })
 
-    const hasLastMessage = computed(() => messages.value.length > 0)
+    const hasLastMessage = computed(() => hasEverFetched.value || messages.value.length > 0)
 
     const hasHistory = computed(() => messages.value.length > 1)
 

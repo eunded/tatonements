@@ -103,6 +103,7 @@ export default {
 | `position` | String | `'top'` | Position de la bannière : `'top'` ou `'bottom'` |
 | `floatingButton` | Boolean | `false` | Bouton de réouverture flottant (sinon barre normale) |
 | `errorMessage` | String | `'Impossible de charger...'` | Message affiché si les deux URLs échouent |
+| `showNoMessageInfo` | Boolean | `true` | Afficher un message d'information si aucun message disponible |
 
 ## Format des messages JSON
 
@@ -183,12 +184,16 @@ Le composant gère plusieurs types d'erreurs :
 - Message d'erreur affiché si les deux fichiers sont invalides
 - Logs détaillés dans la console pour faciliter le débogage
 
-**Fichiers vides** :
-- Si le fichier est accessible mais vide (pas de messages), aucune alerte n'est affichée
-- Comportement normal : pas de bannière si aucun message disponible
+**Fichiers vides ou sans messages** :
+- Si le fichier est accessible mais vide (littéralement vide), aucune erreur n'est levée
+- Si le fichier contient un JSON valide mais aucun message, deux comportements possibles :
+  - `showNoMessageInfo: true` (défaut) : Affiche "Aucun message disponible pour le moment."
+  - `showNoMessageInfo: false` : Aucune bannière affichée
+- Le bouton de réouverture reste accessible pour vérifier s'il y a de nouveaux messages
 
 **Configuration** :
 - Le message d'erreur est configurable via la prop `errorMessage`
+- Le message d'information "aucun message" peut être désactivé avec `showNoMessageInfo: false`
 - Les erreurs sont loguées dans la console avec des détails précis
 
 ## Support Markdown
@@ -298,7 +303,7 @@ Le composant utilise exclusivement la **Composition API** de Vue 3, avec :
 ## Structure du projet
 
 ```
-tatonements/
+message-banner/
 ├── public/
 │   ├── messages-primary.json    # Messages principaux
 │   ├── messages-secondary.json  # Messages de secours

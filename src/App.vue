@@ -9,6 +9,7 @@
       :max-history="10"
       :position="bannerPosition"
       :floating-button="floatingButton"
+      :show-no-message-info="true"
       error-message="⚠️ Impossible de charger les messages. Veuillez vérifier votre connexion."
     />
 
@@ -208,6 +209,12 @@
                 <td>String</td>
                 <td>'Impossible de charger...'</td>
                 <td>Message affiché si les deux URLs de récupération échouent</td>
+              </tr>
+              <tr>
+                <td><code>showNoMessageInfo</code></td>
+                <td>Boolean</td>
+                <td>true</td>
+                <td>Afficher un message d'information si aucun message disponible</td>
               </tr>
             </tbody>
           </table>
