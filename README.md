@@ -63,6 +63,7 @@ export default {
 | `maxHistory` | Number | `10` | Nombre de messages affichés dans l'historique |
 | `position` | String | `'top'` | Position de la bannière : `'top'` ou `'bottom'` |
 | `floatingButton` | Boolean | `false` | Bouton de réouverture flottant (sinon barre normale) |
+| `errorMessage` | String | `'Impossible de charger...'` | Message affiché si les deux URLs échouent |
 
 ## Format des messages JSON
 
@@ -104,7 +105,7 @@ Le composant affiche automatiquement le dernier message non lu. Une fois marqué
 
 ### 4. Persistance
 
-Les IDs des messages lus sont stockés dans le `localStorage` sous la clé `message-banner-read`. Ils restent mémorisés même après fermeture de l'application.
+Le dernier message lu est stocké dans le `localStorage` sous la clé `message-banner-last-read`. Seul l'ID du dernier message lu est conservé pour optimiser le stockage. Les messages plus anciens que le dernier lu sont automatiquement considérés comme lus.
 
 ### 5. Réouverture
 
@@ -115,6 +116,13 @@ Deux modes disponibles pour rouvrir le dernier message :
 ### 6. Historique
 
 Un bouton dans la bannière ouvre une modale scrollable listant tous les messages (lus et non lus) jusqu'à la limite définie par `maxHistory`.
+
+### 7. Gestion des erreurs
+
+- Si les deux URLs (primaire et secondaire) échouent, un message d'erreur personnalisable s'affiche
+- Le message d'erreur est configurable via la prop `errorMessage`
+- Si le fichier de messages est vide (mais accessible), aucune alerte n'est affichée
+- Les erreurs sont uniquement affichées en cas d'échec réseau ou de fichier inaccessible
 
 ## Support Markdown
 
@@ -194,7 +202,16 @@ Le composant utilise SCSS avec un style modulaire. Toutes les classes sont scop�
 - **Vite** - Build tool ultra-rapide
 - **SCSS** - Préprocesseur CSS
 - **Marked** - Parser Markdown
-- **Composition API** - API moderne de Vue 3
+- **Composition API** - API moderne de Vue 3 (setup(), ref(), computed(), onMounted())
+
+### Note sur l'API Composition
+
+Le composant utilise exclusivement la **Composition API** de Vue 3, avec :
+- `setup(props)` pour la logique du composant
+- `ref()` pour les états réactifs
+- `computed()` pour les propriétés calculées
+- `onMounted()` pour le cycle de vie
+- Pas d'Options API (data, methods, etc.)
 
 ## Structure du projet
 

@@ -100,6 +100,10 @@ export default {
     floatingButton: {
       type: Boolean,
       default: false
+    },
+    errorMessage: {
+      type: String,
+      default: 'Impossible de charger les messages. Veuillez réessayer plus tard.'
     }
   },
   setup(props) {
@@ -107,40 +111,44 @@ export default {
     const currentMessage = ref(null)
     const showBanner = ref(false)
     const showHistoryModal = ref(false)
-    const readMessages = ref(new Set())
+    const lastReadMessageId = ref(null)
+    const fetchError = ref(false)
 
-    // Clé pour localStorage
-    const STORAGE_KEY = 'message-banner-read'
+    // Clé pour localStorage - ne garde que le dernier message lu
+    const STORAGE_KEY = 'message-banner-last-read'
 
-    // Charger les messages lus depuis localStorage
-    const loadReadMessages = () => {
+    // Charger le dernier message lu depuis localStorage
+    const loadLastReadMessage = () => {
       try {
         const stored = localStorage.getItem(STORAGE_KEY)
         if (stored) {
-          readMessages.value = new Set(JSON.parse(stored))
+          lastReadMessageId.value = stored
         }
       } catch (error) {
-        console.error('Erreur lors du chargement des messages lus:', error)
+        console.error('Erreur lors du chargement du dernier message lu:', error)
       }
     }
 
-    // Sauvegarder les messages lus dans localStorage
-    const saveReadMessages = () => {
+    // Sauvegarder le dernier message lu dans localStorage
+    const saveLastReadMessage = (messageId) => {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify([...readMessages.value]))
+        localStorage.setItem(STORAGE_KEY, messageId)
+        lastReadMessageId.value = messageId
       } catch (error) {
-        console.error('Erreur lors de la sauvegarde des messages lus:', error)
+        console.error('Erreur lors de la sauvegarde du dernier message lu:', error)
       }
     }
 
     // Fetch des messages avec fallback
     const fetchMessages = async () => {
+      fetchError.value = false
+
       try {
         // Essayer l'URL primaire
         const response = await fetch(props.primaryUrl)
         if (response.ok) {
           const data = await response.json()
-          return data.messages || []
+          return { messages: data.messages || [], error: false }
         }
         throw new Error('Primary URL failed')
       } catch (error) {
@@ -150,13 +158,15 @@ export default {
           const response = await fetch(props.secondaryUrl)
           if (response.ok) {
             const data = await response.json()
-            return data.messages || []
+            return { messages: data.messages || [], error: false }
           }
+          throw new Error('Secondary URL failed')
         } catch (secondaryError) {
           console.error('Impossible de récupérer les messages:', secondaryError)
+          fetchError.value = true
+          return { messages: [], error: true }
         }
       }
-      return []
     }
 
     // Filtrer les messages valides (non expirés)
@@ -170,13 +180,47 @@ export default {
 
     // Trouver le dernier message non lu
     const findUnreadMessage = (msgs) => {
-      return msgs.find(msg => !readMessages.value.has(msg.id))
+      // Si aucun message n'a été lu, retourner le premier (le plus récent)
+      if (!lastReadMessageId.value) {
+        return msgs[0] || null
+      }
+
+      // Sinon, retourner le premier message qui n'est pas le dernier lu
+      // (on affiche uniquement les messages plus récents que le dernier lu)
+      const lastReadIndex = msgs.findIndex(msg => msg.id === lastReadMessageId.value)
+
+      // Si le dernier message lu n'est plus dans la liste ou qu'il y a de nouveaux messages
+      if (lastReadIndex === -1 || lastReadIndex > 0) {
+        return msgs[0]
+      }
+
+      return null
     }
 
     // Initialiser les messages
     const initMessages = async () => {
-      const fetchedMessages = await fetchMessages()
-      messages.value = filterValidMessages(fetchedMessages)
+      const result = await fetchMessages()
+
+      // Si erreur de fetch, afficher le message d'erreur uniquement s'il y a vraiment une erreur
+      if (result.error && result.messages.length === 0) {
+        // Créer un message d'erreur temporaire
+        currentMessage.value = {
+          id: 'error-message',
+          datetime: new Date().toISOString(),
+          expiryDate: new Date(Date.now() + 3600000).toISOString(), // 1 heure
+          content: props.errorMessage,
+          isError: true
+        }
+        showBanner.value = true
+        return
+      }
+
+      messages.value = filterValidMessages(result.messages)
+
+      // Ne pas afficher de bannière si le fichier est vide (pas d'erreur)
+      if (messages.value.length === 0) {
+        return
+      }
 
       const unreadMessage = findUnreadMessage(messages.value)
       if (unreadMessage) {
@@ -187,9 +231,9 @@ export default {
 
     // Marquer un message comme lu
     const markAsRead = () => {
-      if (currentMessage.value) {
-        readMessages.value.add(currentMessage.value.id)
-        saveReadMessages()
+      if (currentMessage.value && !currentMessage.value.isError) {
+        // Sauvegarder uniquement le dernier message lu
+        saveLastReadMessage(currentMessage.value.id)
         showBanner.value = false
 
         // Chercher le prochain message non lu
@@ -200,6 +244,9 @@ export default {
             showBanner.value = true
           }, 300)
         }
+      } else if (currentMessage.value && currentMessage.value.isError) {
+        // Pour un message d'erreur, on ferme juste la bannière
+        showBanner.value = false
       }
     }
 
@@ -213,12 +260,27 @@ export default {
       if (messages.value.length > 0) {
         currentMessage.value = messages.value[0]
         showBanner.value = true
+      } else if (fetchError.value) {
+        // Si erreur de fetch, réafficher le message d'erreur
+        initMessages()
       }
     }
 
     // Vérifier si un message a été lu
     const isMessageRead = (messageId) => {
-      return readMessages.value.has(messageId)
+      // Un message est considéré comme lu s'il est plus ancien ou égal au dernier message lu
+      if (!lastReadMessageId.value) return false
+
+      const messageIndex = messages.value.findIndex(msg => msg.id === messageId)
+      const lastReadIndex = messages.value.findIndex(msg => msg.id === lastReadMessageId.value)
+
+      // Si on trouve les deux, comparer les index (les messages sont triés du plus récent au plus ancien)
+      if (messageIndex !== -1 && lastReadIndex !== -1) {
+        return messageIndex >= lastReadIndex
+      }
+
+      // Si le message n'est pas trouvé ou le dernier lu n'est pas trouvé, considérer comme lu
+      return messageIndex === -1
     }
 
     // Formater le contenu du message
@@ -279,7 +341,7 @@ export default {
 
     // Lifecycle
     onMounted(() => {
-      loadReadMessages()
+      loadLastReadMessage()
       initMessages()
     })
 

@@ -9,6 +9,7 @@
       :max-history="10"
       :position="bannerPosition"
       :floating-button="floatingButton"
+      error-message="⚠️ Impossible de charger les messages. Veuillez vérifier votre connexion."
     />
 
     <!-- Contenu de l'application -->
@@ -144,6 +145,7 @@
   :max-history="10"
   position="top"
   :floating-button="false"
+  error-message="Impossible de charger les messages."
 /&gt;</code></pre>
         </div>
 
@@ -200,6 +202,12 @@
                 <td>Boolean</td>
                 <td>false</td>
                 <td>Bouton de réouverture flottant (sinon barre normale)</td>
+              </tr>
+              <tr>
+                <td><code>errorMessage</code></td>
+                <td>String</td>
+                <td>'Impossible de charger...'</td>
+                <td>Message affiché si les deux URLs de récupération échouent</td>
               </tr>
             </tbody>
           </table>
