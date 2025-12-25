@@ -338,20 +338,29 @@ export default {
       const result = await fetchMessages()
       hasEverFetched.value = true
 
+      // Erreur de récupération des messages
       if (result.error && result.messages.length === 0) {
-        currentMessage.value = {
-          id: 'error-message',
-          datetime: new Date().toISOString(),
-          expiryDate: new Date(Date.now() + 3600000).toISOString(),
-          content: props.errorMessage,
-          isError: true
+        // Afficher le message d'erreur uniquement si showNoMessageInfo est true
+        if (props.showNoMessageInfo) {
+          currentMessage.value = {
+            id: 'error-message',
+            datetime: new Date().toISOString(),
+            expiryDate: new Date(Date.now() + 3600000).toISOString(),
+            content: props.errorMessage,
+            isError: true
+          }
+          showBanner.value = true
+        } else {
+          // Si showNoMessageInfo est false, ne rien afficher
+          showBanner.value = false
+          currentMessage.value = null
         }
-        showBanner.value = true
         return
       }
 
       messages.value = filterValidMessages(result.messages)
 
+      // Pas de messages mais pas d'erreur non plus
       if (messages.value.length === 0 && props.showNoMessageInfo) {
         currentMessage.value = {
           id: 'no-message-info',
