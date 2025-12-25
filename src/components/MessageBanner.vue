@@ -1,21 +1,22 @@
 <template>
-  <div v-if="shouldShowBanner" :class="['message-banner', `position-${position}`]">
-    <!-- Bannière principale -->
+  <!-- Mode bannière fixe -->
+  <div v-if="displayMode === 'banner' && shouldShowBanner"
+       :class="['message-banner', `position-${position}`, bannerClass]">
     <div class="banner-content">
       <div class="message-text" v-html="formattedMessage"></div>
       <div class="banner-actions">
         <button
           v-if="hasHistory"
           @click="showHistoryModal = true"
-          class="btn-secondary"
+          :class="['btn-secondary', buttonClass]"
           title="Voir l'historique"
         >
           📋
         </button>
-        <button @click="markAsRead" class="btn-primary">
+        <button @click="markAsRead" :class="['btn-primary', buttonClass]">
           ✓ Lu
         </button>
-        <button @click="closeBanner" class="btn-close">
+        <button @click="closeBanner" :class="['btn-close', buttonClass]">
           ✕
         </button>
       </div>
@@ -49,20 +50,67 @@
     </div>
   </div>
 
-  <!-- Bouton pour rouvrir le dernier message -->
-  <div
-    v-if="!shouldShowBanner && hasLastMessage"
-    :class="[
-      'reopen-button',
-      `position-${position}`,
-      { 'floating': floatingButton }
-    ]"
-  >
-    <button @click="reopenBanner" class="reopen-btn" title="Afficher le dernier message">
-      <span class="icon">💬</span>
-      <span class="text">Message disponible</span>
-    </button>
+  <!-- Mode inline -->
+  <div v-if="displayMode === 'inline'" :class="['message-inline-container', inlineContainerClass]">
+    <div v-if="shouldShowBanner" :class="['message-inline', inlineClass]">
+      <div class="message-text" v-html="formattedMessage"></div>
+      <div class="message-actions">
+        <button
+          v-if="hasHistory"
+          @click="showHistoryModal = true"
+          :class="['btn-secondary', buttonClass]"
+          title="Voir l'historique"
+        >
+          📋
+        </button>
+        <button @click="markAsRead" :class="['btn-primary', buttonClass]">
+          ✓ Lu
+        </button>
+        <button @click="closeBanner" :class="['btn-close', buttonClass]">
+          ✕
+        </button>
+      </div>
+    </div>
+
+    <!-- Modale d'historique pour inline -->
+    <div v-if="showHistoryModal" class="modal-overlay" @click.self="showHistoryModal = false">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Historique des messages</h3>
+          <button @click="showHistoryModal = false" class="btn-close">✕</button>
+        </div>
+        <div class="modal-body">
+          <div
+            v-for="msg in historyMessages"
+            :key="msg.id"
+            class="history-item"
+            :class="{ 'read': isMessageRead(msg.id) }"
+          >
+            <div class="history-date">
+              {{ formatDate(msg.datetime) }}
+              <span v-if="isMessageRead(msg.id)" class="read-badge">Lu</span>
+            </div>
+            <div class="history-content" v-html="formatMessageContent(msg.content)"></div>
+          </div>
+          <div v-if="historyMessages.length === 0" class="no-history">
+            Aucun message dans l'historique
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
+
+  <!-- Bouton de réouverture (simple bouton) -->
+  <button
+    v-if="!shouldShowBanner && hasLastMessage"
+    @click="reopenBanner"
+    :class="['reopen-button', reopenButtonClass]"
+    title="Afficher le dernier message"
+  >
+    <slot name="reopen-button-content">
+      💬 Messages
+    </slot>
+  </button>
 </template>
 
 <script>
@@ -97,9 +145,10 @@ export default {
       default: 'top',
       validator: (value) => ['top', 'bottom'].includes(value)
     },
-    floatingButton: {
-      type: Boolean,
-      default: false
+    displayMode: {
+      type: String,
+      default: 'banner',
+      validator: (value) => ['banner', 'inline'].includes(value)
     },
     errorMessage: {
       type: String,
@@ -108,6 +157,27 @@ export default {
     showNoMessageInfo: {
       type: Boolean,
       default: true
+    },
+    // Props pour personnaliser les classes CSS
+    bannerClass: {
+      type: String,
+      default: ''
+    },
+    inlineClass: {
+      type: String,
+      default: ''
+    },
+    inlineContainerClass: {
+      type: String,
+      default: ''
+    },
+    buttonClass: {
+      type: String,
+      default: ''
+    },
+    reopenButtonClass: {
+      type: String,
+      default: ''
     }
   },
   setup(props) {
@@ -152,40 +222,42 @@ export default {
         // Essayer l'URL primaire
         const response = await fetch(props.primaryUrl)
         if (response.ok) {
+          const text = await response.text()
+          // Gérer le cas du fichier vide
+          if (!text || text.trim() === '') {
+            console.info('Fichier primaire vide, aucun message disponible')
+            return { messages: [], error: false }
+          }
           try {
-            const text = await response.text()
-            // Gérer le cas du fichier vide
-            if (!text || text.trim() === '') {
-              return { messages: [], error: false }
-            }
             const data = JSON.parse(text)
             return { messages: data.messages || [], error: false }
           } catch (parseError) {
-            console.error('Erreur de parsing JSON (URL primaire):', parseError)
+            console.error('Erreur de parsing JSON (URL primaire):', parseError.message)
             throw new Error('Invalid JSON in primary URL')
           }
         }
-        throw new Error('Primary URL failed')
+        throw new Error(`Primary URL failed with status ${response.status}`)
       } catch (error) {
         console.warn('Échec de l\'URL primaire, tentative avec l\'URL secondaire:', error.message)
         try {
           // Fallback sur l'URL secondaire
           const response = await fetch(props.secondaryUrl)
           if (response.ok) {
+            const text = await response.text()
+            // Gérer le cas du fichier vide
+            if (!text || text.trim() === '') {
+              console.info('Fichier secondaire vide, aucun message disponible')
+              return { messages: [], error: false }
+            }
             try {
-              const text = await response.text()
-              // Gérer le cas du fichier vide
-              if (!text || text.trim() === '') {
-                return { messages: [], error: false }
-              }
               const data = JSON.parse(text)
               return { messages: data.messages || [], error: false }
             } catch (parseError) {
-              console.error('Erreur de parsing JSON (URL secondaire):', parseError)
+              console.error('Erreur de parsing JSON (URL secondaire):', parseError.message)
               throw new Error('Invalid JSON in secondary URL')
             }
           }
-          throw new Error('Secondary URL failed')
+          throw new Error(`Secondary URL failed with status ${response.status}`)
         } catch (secondaryError) {
           console.error('Impossible de récupérer les messages:', secondaryError.message)
           fetchError.value = true
@@ -205,16 +277,12 @@ export default {
 
     // Trouver le dernier message non lu
     const findUnreadMessage = (msgs) => {
-      // Si aucun message n'a été lu, retourner le premier (le plus récent)
       if (!lastReadMessageId.value) {
         return msgs[0] || null
       }
 
-      // Sinon, retourner le premier message qui n'est pas le dernier lu
-      // (on affiche uniquement les messages plus récents que le dernier lu)
       const lastReadIndex = msgs.findIndex(msg => msg.id === lastReadMessageId.value)
 
-      // Si le dernier message lu n'est plus dans la liste ou qu'il y a de nouveaux messages
       if (lastReadIndex === -1 || lastReadIndex > 0) {
         return msgs[0]
       }
@@ -227,13 +295,11 @@ export default {
       const result = await fetchMessages()
       hasEverFetched.value = true
 
-      // Si erreur de fetch, afficher le message d'erreur uniquement s'il y a vraiment une erreur
       if (result.error && result.messages.length === 0) {
-        // Créer un message d'erreur temporaire
         currentMessage.value = {
           id: 'error-message',
           datetime: new Date().toISOString(),
-          expiryDate: new Date(Date.now() + 3600000).toISOString(), // 1 heure
+          expiryDate: new Date(Date.now() + 3600000).toISOString(),
           content: props.errorMessage,
           isError: true
         }
@@ -243,12 +309,11 @@ export default {
 
       messages.value = filterValidMessages(result.messages)
 
-      // Si aucun message disponible et que l'option est activée, afficher un message d'info
       if (messages.value.length === 0 && props.showNoMessageInfo) {
         currentMessage.value = {
           id: 'no-message-info',
           datetime: new Date().toISOString(),
-          expiryDate: new Date(Date.now() + 3600000).toISOString(), // 1 heure
+          expiryDate: new Date(Date.now() + 3600000).toISOString(),
           content: 'Aucun message disponible pour le moment.',
           isInfo: true
         }
@@ -256,7 +321,6 @@ export default {
         return
       }
 
-      // Si aucun message et l'option est désactivée, ne rien afficher
       if (messages.value.length === 0) {
         return
       }
@@ -271,11 +335,9 @@ export default {
     // Marquer un message comme lu
     const markAsRead = () => {
       if (currentMessage.value && !currentMessage.value.isError && !currentMessage.value.isInfo) {
-        // Sauvegarder uniquement le dernier message lu
         saveLastReadMessage(currentMessage.value.id)
         showBanner.value = false
 
-        // Chercher le prochain message non lu
         const nextUnread = findUnreadMessage(messages.value)
         if (nextUnread) {
           setTimeout(() => {
@@ -284,7 +346,6 @@ export default {
           }, 300)
         }
       } else if (currentMessage.value && (currentMessage.value.isError || currentMessage.value.isInfo)) {
-        // Pour un message d'erreur ou d'info, on ferme juste la bannière
         showBanner.value = false
       }
     }
@@ -300,10 +361,8 @@ export default {
         currentMessage.value = messages.value[0]
         showBanner.value = true
       } else if (fetchError.value) {
-        // Si erreur de fetch, réafficher le message d'erreur
         initMessages()
       } else if (hasEverFetched.value && props.showNoMessageInfo) {
-        // Si pas de messages mais fetch réussi, afficher le message d'info
         currentMessage.value = {
           id: 'no-message-info',
           datetime: new Date().toISOString(),
@@ -313,25 +372,21 @@ export default {
         }
         showBanner.value = true
       } else {
-        // Sinon, réessayer de fetch les messages
         initMessages()
       }
     }
 
     // Vérifier si un message a été lu
     const isMessageRead = (messageId) => {
-      // Un message est considéré comme lu s'il est plus ancien ou égal au dernier message lu
       if (!lastReadMessageId.value) return false
 
       const messageIndex = messages.value.findIndex(msg => msg.id === messageId)
       const lastReadIndex = messages.value.findIndex(msg => msg.id === lastReadMessageId.value)
 
-      // Si on trouve les deux, comparer les index (les messages sont triés du plus récent au plus ancien)
       if (messageIndex !== -1 && lastReadIndex !== -1) {
         return messageIndex >= lastReadIndex
       }
 
-      // Si le message n'est pas trouvé ou le dernier lu n'est pas trouvé, considérer comme lu
       return messageIndex === -1
     }
 
@@ -341,21 +396,15 @@ export default {
 
       if (props.enableMarkdown) {
         if (props.fullMarkdown) {
-          // Markdown complet
           return marked(content)
         } else {
-          // Markdown simple : liens, gras, italique
           let formatted = content
-          // Liens markdown [texte](url)
           formatted = formatted.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
-          // Gras **texte**
           formatted = formatted.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-          // Italique *texte*
           formatted = formatted.replace(/\*([^*]+)\*/g, '<em>$1</em>')
           return formatted
         }
       } else {
-        // Pas de markdown, mais détecter les URLs
         return content.replace(
           /(https?:\/\/[^\s]+)/g,
           '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
@@ -416,6 +465,7 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+// Mode bannière fixe
 .message-banner {
   position: fixed;
   left: 0;
@@ -461,6 +511,40 @@ export default {
   }
 }
 
+// Mode inline
+.message-inline-container {
+  width: 100%;
+}
+
+.message-inline {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  animation: fadeIn 0.3s ease-out;
+
+  .message-text {
+    margin-bottom: 1rem;
+  }
+
+  .message-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .message-text {
   flex: 1;
   font-size: 0.95rem;
@@ -485,7 +569,8 @@ export default {
   }
 }
 
-.banner-actions {
+.banner-actions,
+.message-actions {
   display: flex;
   gap: 0.5rem;
   flex-shrink: 0;
@@ -562,10 +647,10 @@ button {
   justify-content: center;
   z-index: 2000;
   padding: 1rem;
-  animation: fadeIn 0.2s ease-out;
+  animation: modalFadeIn 0.2s ease-out;
 }
 
-@keyframes fadeIn {
+@keyframes modalFadeIn {
   from {
     opacity: 0;
   }
@@ -692,86 +777,21 @@ button {
   font-style: italic;
 }
 
-// Bouton de réouverture
+// Bouton de réouverture (simple bouton)
 .reopen-button {
-  position: fixed;
-  left: 0;
-  right: 0;
-  z-index: 999;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  font-weight: 600;
+  font-size: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 
-  &.position-top {
-    top: 0;
-  }
-
-  &.position-bottom {
-    bottom: 0;
-  }
-
-  // Mode bouton normal (par défaut) - barre horizontale
-  .reopen-btn {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1rem;
-    background: transparent;
-    color: white;
-    font-weight: 500;
-    font-size: 0.9rem;
-
-    .icon {
-      font-size: 1.1rem;
-    }
-
-    .text {
-      @media (max-width: 480px) {
-        display: none;
-      }
-    }
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.1);
-    }
-  }
-
-  // Mode bouton flottant (optionnel)
-  &.floating {
-    position: fixed;
-    left: auto;
-    right: 1rem;
-    width: auto;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 50px;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-
-    &.position-top {
-      top: 1rem;
-    }
-
-    &.position-bottom {
-      bottom: 1rem;
-    }
-
-    .reopen-btn {
-      width: auto;
-      padding: 0.75rem 1rem;
-      border-radius: 50px;
-
-      .text {
-        display: none;
-      }
-
-      .icon {
-        font-size: 1.25rem;
-      }
-    }
-
-    &:hover {
-      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
-    }
+  &:hover {
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
   }
 }
 </style>
