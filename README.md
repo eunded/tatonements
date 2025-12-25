@@ -62,6 +62,7 @@ export default {
 | `fullMarkdown` | Boolean | `false` | Markdown complet (sinon simple : liens, gras, italique) |
 | `maxHistory` | Number | `10` | Nombre de messages affichés dans l'historique |
 | `position` | String | `'top'` | Position de la bannière : `'top'` ou `'bottom'` |
+| `floatingButton` | Boolean | `false` | Bouton de réouverture flottant (sinon barre normale) |
 
 ## Format des messages JSON
 
@@ -107,7 +108,9 @@ Les IDs des messages lus sont stockés dans le `localStorage` sous la clé `mess
 
 ### 5. Réouverture
 
-Un bouton flottant permet de rouvrir le dernier message à tout moment.
+Deux modes disponibles pour rouvrir le dernier message :
+- **Mode normal** (par défaut) : Une barre discrète en haut ou en bas avec le texte "Message disponible"
+- **Mode flottant** : Un bouton rond flottant sur le côté droit de l'écran (avec `floatingButton: true`)
 
 ### 6. Historique
 

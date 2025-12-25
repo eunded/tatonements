@@ -8,6 +8,7 @@
       :full-markdown="false"
       :max-history="10"
       :position="bannerPosition"
+      :floating-button="floatingButton"
     />
 
     <!-- Contenu de l'application -->
@@ -88,6 +89,16 @@
             </div>
 
             <div class="config-item">
+              <label>
+                <input
+                  type="checkbox"
+                  v-model="floatingButton"
+                />
+                Bouton flottant (au lieu d'une barre normale)
+              </label>
+            </div>
+
+            <div class="config-item">
               <label>URL primaire :</label>
               <input
                 type="text"
@@ -132,6 +143,7 @@
   :full-markdown="false"
   :max-history="10"
   position="top"
+  :floating-button="false"
 /&gt;</code></pre>
         </div>
 
@@ -183,6 +195,12 @@
                 <td>'top'</td>
                 <td>Position de la bannière : 'top' ou 'bottom'</td>
               </tr>
+              <tr>
+                <td><code>floatingButton</code></td>
+                <td>Boolean</td>
+                <td>false</td>
+                <td>Bouton de réouverture flottant (sinon barre normale)</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -202,11 +220,13 @@ export default {
   },
   setup() {
     const bannerPosition = ref('top')
+    const floatingButton = ref(false)
     const primaryUrl = ref('/messages-primary.json')
     const secondaryUrl = ref('/messages-secondary.json')
 
     return {
       bannerPosition,
+      floatingButton,
       primaryUrl,
       secondaryUrl
     }

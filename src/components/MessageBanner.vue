@@ -50,14 +50,19 @@
   </div>
 
   <!-- Bouton pour rouvrir le dernier message -->
-  <button
+  <div
     v-if="!shouldShowBanner && hasLastMessage"
-    @click="reopenBanner"
-    :class="['reopen-button', `position-${position}`]"
-    title="Afficher le dernier message"
+    :class="[
+      'reopen-button',
+      `position-${position}`,
+      { 'floating': floatingButton }
+    ]"
   >
-    💬
-  </button>
+    <button @click="reopenBanner" class="reopen-btn" title="Afficher le dernier message">
+      <span class="icon">💬</span>
+      <span class="text">Message disponible</span>
+    </button>
+  </div>
 </template>
 
 <script>
@@ -91,6 +96,10 @@ export default {
       type: String,
       default: 'top',
       validator: (value) => ['top', 'bottom'].includes(value)
+    },
+    floatingButton: {
+      type: Boolean,
+      default: false
     }
   },
   setup(props) {
@@ -572,25 +581,83 @@ button {
 // Bouton de réouverture
 .reopen-button {
   position: fixed;
-  right: 1rem;
+  left: 0;
+  right: 0;
   z-index: 999;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 0.75rem 1rem;
-  border-radius: 50px;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-  font-size: 1.25rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 
   &.position-top {
-    top: 1rem;
+    top: 0;
   }
 
   &.position-bottom {
-    bottom: 1rem;
+    bottom: 0;
   }
 
-  &:hover {
-    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
+  // Mode bouton normal (par défaut) - barre horizontale
+  .reopen-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: transparent;
+    color: white;
+    font-weight: 500;
+    font-size: 0.9rem;
+
+    .icon {
+      font-size: 1.1rem;
+    }
+
+    .text {
+      @media (max-width: 480px) {
+        display: none;
+      }
+    }
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+  }
+
+  // Mode bouton flottant (optionnel)
+  &.floating {
+    position: fixed;
+    left: auto;
+    right: 1rem;
+    width: auto;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50px;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+
+    &.position-top {
+      top: 1rem;
+    }
+
+    &.position-bottom {
+      bottom: 1rem;
+    }
+
+    .reopen-btn {
+      width: auto;
+      padding: 0.75rem 1rem;
+      border-radius: 50px;
+
+      .text {
+        display: none;
+      }
+
+      .icon {
+        font-size: 1.25rem;
+      }
+    }
+
+    &:hover {
+      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
+    }
   }
 }
 </style>
