@@ -71,14 +71,17 @@ export default {
 <template>
   <div class="ma-section">
     <MessageBanner
-      primary-url="/messages.json"
-      secondary-url="/messages-backup.json"
+      primary-url="/messages-primary.json"
+      secondary-url="/messages-secondary.json"
       display-mode="inline"
       inline-class="mon-message-custom"
+      :show-no-message-info="false"
     />
   </div>
 </template>
 ```
+
+**Note importante** : Pour passer des booléens, utilisez `:show-no-message-info="false"` (avec `:`), pas `show-no-message-info="false"` qui passerait la string `"false"`.
 
 ### Personnalisation CSS
 
