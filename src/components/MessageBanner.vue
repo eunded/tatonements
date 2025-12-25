@@ -218,52 +218,95 @@ export default {
     const fetchMessages = async () => {
       fetchError.value = false
 
-      try {
-        // Essayer l'URL primaire
-        const response = await fetch(props.primaryUrl)
-        if (response.ok) {
-          const text = await response.text()
-          // Gérer le cas du fichier vide
-          if (!text || text.trim() === '') {
-            console.info('Fichier primaire vide, aucun message disponible')
-            return { messages: [], error: false }
-          }
-          try {
-            const data = JSON.parse(text)
-            return { messages: data.messages || [], error: false }
-          } catch (parseError) {
-            console.error('Erreur de parsing JSON (URL primaire):', parseError.message)
-            throw new Error('Invalid JSON in primary URL')
-          }
+      // Helper pour parser JSON avec gestion d'erreurs
+      const parseJSON = (text, source) => {
+        if (!text || text.trim() === '') {
+          return { messages: [], error: false, isEmpty: true }
         }
-        throw new Error(`Primary URL failed with status ${response.status}`)
-      } catch (error) {
-        console.warn('Échec de l\'URL primaire, tentative avec l\'URL secondaire:', error.message)
         try {
-          // Fallback sur l'URL secondaire
-          const response = await fetch(props.secondaryUrl)
-          if (response.ok) {
-            const text = await response.text()
-            // Gérer le cas du fichier vide
-            if (!text || text.trim() === '') {
-              console.info('Fichier secondaire vide, aucun message disponible')
-              return { messages: [], error: false }
-            }
-            try {
-              const data = JSON.parse(text)
-              return { messages: data.messages || [], error: false }
-            } catch (parseError) {
-              console.error('Erreur de parsing JSON (URL secondaire):', parseError.message)
-              throw new Error('Invalid JSON in secondary URL')
-            }
-          }
-          throw new Error(`Secondary URL failed with status ${response.status}`)
-        } catch (secondaryError) {
-          console.error('Impossible de récupérer les messages:', secondaryError.message)
-          fetchError.value = true
-          return { messages: [], error: true }
+          const data = JSON.parse(text)
+          return { messages: data.messages || [], error: false, isEmpty: false }
+        } catch (parseError) {
+          console.error(`Erreur de parsing JSON (${source}):`, parseError.message)
+          return { messages: [], error: true, parseError: true }
         }
       }
+
+      // Helper pour fetch avec gestion complète des erreurs
+      const fetchURL = async (url, source) => {
+        try {
+          const response = await fetch(url)
+
+          // Fichier trouvé
+          if (response.ok) {
+            const text = await response.text()
+            const result = parseJSON(text, source)
+
+            if (result.isEmpty) {
+              console.info(`Fichier ${source} vide, aucun message disponible`)
+              return { messages: [], error: false, notFound: false }
+            }
+
+            if (result.parseError) {
+              return { messages: [], error: true, notFound: false }
+            }
+
+            return { messages: result.messages, error: false, notFound: false }
+          }
+
+          // Fichier absent (404) - pas une vraie erreur
+          if (response.status === 404) {
+            console.info(`Fichier ${source} absent (404)`)
+            return { messages: [], error: false, notFound: true }
+          }
+
+          // Autre erreur HTTP
+          console.error(`Erreur HTTP ${response.status} pour ${source}`)
+          return { messages: [], error: true, notFound: false }
+
+        } catch (networkError) {
+          // Erreur réseau (pas de connexion, CORS, etc.)
+          console.error(`Erreur réseau pour ${source}:`, networkError.message)
+          return { messages: [], error: true, notFound: false }
+        }
+      }
+
+      // Essayer l'URL primaire
+      const primaryResult = await fetchURL(props.primaryUrl, 'primaire')
+
+      // Si succès avec l'URL primaire
+      if (!primaryResult.notFound && primaryResult.messages.length > 0) {
+        return primaryResult
+      }
+
+      // Si l'URL primaire a une vraie erreur (pas juste 404), on signale quand même
+      if (primaryResult.error && !primaryResult.notFound) {
+        console.warn('Problème avec URL primaire, tentative avec URL secondaire')
+      }
+
+      // Essayer l'URL secondaire
+      const secondaryResult = await fetchURL(props.secondaryUrl, 'secondaire')
+
+      // Si succès avec l'URL secondaire
+      if (!secondaryResult.notFound && secondaryResult.messages.length > 0) {
+        return secondaryResult
+      }
+
+      // Les deux fichiers sont absents - comportement normal, pas d'erreur
+      if (primaryResult.notFound && secondaryResult.notFound) {
+        console.info('Aucun fichier de messages disponible (404 sur les deux URLs)')
+        return { messages: [], error: false }
+      }
+
+      // Vraie erreur sur les deux URLs (réseau, parsing, HTTP)
+      if (primaryResult.error && secondaryResult.error) {
+        console.error('Impossible de récupérer les messages depuis les deux URLs')
+        fetchError.value = true
+        return { messages: [], error: true }
+      }
+
+      // Au moins une URL fonctionne mais sans messages
+      return { messages: [], error: false }
     }
 
     // Filtrer les messages valides (non expirés)
