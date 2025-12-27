@@ -1,3 +1,504 @@
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { marked } from 'marked'
+
+// ============================================================
+// TEXTES PAR DÉFAUT (Internationalisables)
+// ============================================================
+const DEFAULT_TEXTS = {
+  // Boutons d'action
+  btnRead: '✓ Lu',
+  btnClose: '✕',
+  btnHistory: '📋',
+  btnReopenDefault: '💬 Messages',
+
+  // Tooltips
+  tooltipHistory: 'Voir l\'historique',
+  tooltipReopen: 'Afficher le dernier message',
+
+  // Modal historique
+  historyTitle: 'Historique des messages',
+  historyReadBadge: 'Lu',
+  historyEmpty: 'Aucun message dans l\'historique',
+
+  // Messages système
+  noMessageAvailable: 'Aucun message disponible pour le moment.',
+  defaultError: 'Impossible de charger les messages. Veuillez réessayer plus tard.'
+}
+
+// ============================================================
+// PROPS
+// ============================================================
+const props = defineProps({
+  primaryUrl: {
+    type: String,
+    required: true
+  },
+  secondaryUrl: {
+    type: String,
+    required: true
+  },
+  enableMarkdown: {
+    type: Boolean,
+    default: false
+  },
+  fullMarkdown: {
+    type: Boolean,
+    default: false
+  },
+  maxHistory: {
+    type: Number,
+    default: 10
+  },
+  position: {
+    type: String,
+    default: 'top',
+    validator: (value) => ['top', 'bottom'].includes(value)
+  },
+  displayMode: {
+    type: String,
+    default: 'banner',
+    validator: (value) => ['banner', 'inline'].includes(value)
+  },
+  errorMessage: {
+    type: String,
+    default: DEFAULT_TEXTS.defaultError
+  },
+  autoOpen: {
+    type: Boolean,
+    default: true
+  },
+  autoOpenWhenEmpty: {
+    type: Boolean,
+    default: true
+  },
+  // Props pour internationalisation (i18n)
+  textBtnRead: {
+    type: String,
+    default: DEFAULT_TEXTS.btnRead
+  },
+  textBtnClose: {
+    type: String,
+    default: DEFAULT_TEXTS.btnClose
+  },
+  textBtnHistory: {
+    type: String,
+    default: DEFAULT_TEXTS.btnHistory
+  },
+  textBtnReopenDefault: {
+    type: String,
+    default: DEFAULT_TEXTS.btnReopenDefault
+  },
+  textTooltipHistory: {
+    type: String,
+    default: DEFAULT_TEXTS.tooltipHistory
+  },
+  textTooltipReopen: {
+    type: String,
+    default: DEFAULT_TEXTS.tooltipReopen
+  },
+  textHistoryTitle: {
+    type: String,
+    default: DEFAULT_TEXTS.historyTitle
+  },
+  textHistoryReadBadge: {
+    type: String,
+    default: DEFAULT_TEXTS.historyReadBadge
+  },
+  textHistoryEmpty: {
+    type: String,
+    default: DEFAULT_TEXTS.historyEmpty
+  },
+  textNoMessageAvailable: {
+    type: String,
+    default: DEFAULT_TEXTS.noMessageAvailable
+  },
+  textDefaultError: {
+    type: String,
+    default: DEFAULT_TEXTS.defaultError
+  },
+  // Props pour personnaliser les classes CSS
+  bannerClass: {
+    type: String,
+    default: ''
+  },
+  inlineClass: {
+    type: String,
+    default: ''
+  },
+  inlineContainerClass: {
+    type: String,
+    default: ''
+  },
+  buttonClass: {
+    type: String,
+    default: ''
+  },
+  reopenButtonClass: {
+    type: String,
+    default: ''
+  },
+  // Props pour styles inline (sans !important)
+  bannerStyle: {
+    type: Object,
+    default: () => ({})
+  },
+  inlineStyle: {
+    type: Object,
+    default: () => ({})
+  },
+  inlineContainerStyle: {
+    type: Object,
+    default: () => ({})
+  },
+  buttonStyle: {
+    type: Object,
+    default: () => ({})
+  },
+  reopenButtonStyle: {
+    type: Object,
+    default: () => ({})
+  }
+})
+
+// ============================================================
+// STATE
+// ============================================================
+const messages = ref([])
+const currentMessage = ref(null)
+const showBanner = ref(false)
+const showHistoryModal = ref(false)
+const lastReadMessageId = ref(null)
+const fetchError = ref(false)
+const hasEverFetched = ref(false)
+
+// Clé pour localStorage - ne garde que le dernier message lu
+const STORAGE_KEY = 'message-banner-last-read'
+
+// ============================================================
+// FUNCTIONS
+// ============================================================
+
+// Charger le dernier message lu depuis localStorage
+const loadLastReadMessage = () => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored) {
+      lastReadMessageId.value = stored
+    }
+  } catch (error) {
+    console.error('Erreur lors du chargement du dernier message lu:', error)
+  }
+}
+
+// Sauvegarder le dernier message lu dans localStorage
+const saveLastReadMessage = (messageId) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, messageId)
+    lastReadMessageId.value = messageId
+  } catch (error) {
+    console.error('Erreur lors de la sauvegarde du dernier message lu:', error)
+  }
+}
+
+// Fetch des messages avec fallback
+const fetchMessages = async () => {
+  fetchError.value = false
+
+  // Helper pour parser JSON avec gestion d'erreurs
+  const parseJSON = (text, source) => {
+    if (!text || text.trim() === '') {
+      return { messages: [], error: false, isEmpty: true }
+    }
+    try {
+      const data = JSON.parse(text)
+      return { messages: data.messages || [], error: false, isEmpty: false }
+    } catch (parseError) {
+      console.error(`Erreur de parsing JSON (${source}):`, parseError.message)
+      return { messages: [], error: true, parseError: true }
+    }
+  }
+
+  // Helper pour fetch avec gestion complète des erreurs
+  const fetchURL = async (url, source) => {
+    try {
+      const response = await fetch(url)
+
+      // Fichier trouvé
+      if (response.ok) {
+        const text = await response.text()
+        const result = parseJSON(text, source)
+
+        if (result.isEmpty) {
+          console.info(`Fichier ${source} vide, aucun message disponible`)
+          return { messages: [], error: false, notFound: false }
+        }
+
+        if (result.parseError) {
+          return { messages: [], error: true, notFound: false }
+        }
+
+        return { messages: result.messages, error: false, notFound: false }
+      }
+
+      // Fichier absent (404) - pas une vraie erreur
+      if (response.status === 404) {
+        console.info(`Fichier ${source} absent (404)`)
+        return { messages: [], error: false, notFound: true }
+      }
+
+      // Autre erreur HTTP
+      console.error(`Erreur HTTP ${response.status} pour ${source}`)
+      return { messages: [], error: true, notFound: false }
+
+    } catch (networkError) {
+      // Erreur réseau (pas de connexion, CORS, etc.)
+      console.error(`Erreur réseau pour ${source}:`, networkError.message)
+      return { messages: [], error: true, notFound: false }
+    }
+  }
+
+  // Essayer l'URL primaire
+  const primaryResult = await fetchURL(props.primaryUrl, 'primaire')
+
+  // Si succès avec l'URL primaire
+  if (!primaryResult.notFound && primaryResult.messages.length > 0) {
+    return primaryResult
+  }
+
+  // Si l'URL primaire a une vraie erreur (pas juste 404), on signale quand même
+  if (primaryResult.error && !primaryResult.notFound) {
+    console.warn('Problème avec URL primaire, tentative avec URL secondaire')
+  }
+
+  // Essayer l'URL secondaire
+  const secondaryResult = await fetchURL(props.secondaryUrl, 'secondaire')
+
+  // Si succès avec l'URL secondaire
+  if (!secondaryResult.notFound && secondaryResult.messages.length > 0) {
+    return secondaryResult
+  }
+
+  // Les deux fichiers sont absents - comportement normal, pas d'erreur
+  if (primaryResult.notFound && secondaryResult.notFound) {
+    console.info('Aucun fichier de messages disponible (404 sur les deux URLs)')
+    return { messages: [], error: false }
+  }
+
+  // Vraie erreur sur les deux URLs (réseau, parsing, HTTP)
+  if (primaryResult.error && secondaryResult.error) {
+    console.error('Impossible de récupérer les messages depuis les deux URLs')
+    fetchError.value = true
+    return { messages: [], error: true }
+  }
+
+  // Au moins une URL fonctionne mais sans messages
+  return { messages: [], error: false }
+}
+
+// Filtrer les messages valides (non expirés)
+const filterValidMessages = (msgs) => {
+  const now = new Date()
+  return msgs.filter(msg => {
+    const expiryDate = new Date(msg.expiryDate)
+    return expiryDate > now
+  }).sort((a, b) => new Date(b.datetime) - new Date(a.datetime))
+}
+
+// Trouver le dernier message non lu
+const findUnreadMessage = (msgs) => {
+  if (!lastReadMessageId.value) {
+    return msgs[0] || null
+  }
+
+  const lastReadIndex = msgs.findIndex(msg => msg.id === lastReadMessageId.value)
+
+  if (lastReadIndex === -1 || lastReadIndex > 0) {
+    return msgs[0]
+  }
+
+  return null
+}
+
+// Initialiser les messages
+const initMessages = async () => {
+  const result = await fetchMessages()
+  hasEverFetched.value = true
+
+  messages.value = filterValidMessages(result.messages)
+
+  // Si autoOpen = false, ne rien ouvrir au montage
+  if (!props.autoOpen) {
+    showBanner.value = false
+    currentMessage.value = null
+    return
+  }
+
+  // autoOpen = true : vérifier si on a des messages
+  if (messages.value.length > 0) {
+    // Des messages existent : ouvrir avec le premier message
+    currentMessage.value = messages.value[0]
+    showBanner.value = true
+    return
+  }
+
+  // Aucun message disponible
+  // Si autoOpenWhenEmpty = true, ouvrir avec message placeholder
+  if (props.autoOpenWhenEmpty) {
+    // Erreur de récupération
+    if (result.error) {
+      currentMessage.value = {
+        id: 'error-message',
+        datetime: new Date().toISOString(),
+        expiryDate: new Date(Date.now() + 3600000).toISOString(),
+        content: props.errorMessage,
+        isError: true
+      }
+    } else {
+      // Pas d'erreur, juste pas de messages
+      currentMessage.value = {
+        id: 'no-message-info',
+        datetime: new Date().toISOString(),
+        expiryDate: new Date(Date.now() + 3600000).toISOString(),
+        content: props.textNoMessageAvailable,
+        isInfo: true
+      }
+    }
+    showBanner.value = true
+  } else {
+    // autoOpenWhenEmpty = false : rester fermé, juste afficher le bouton
+    showBanner.value = false
+    currentMessage.value = null
+  }
+}
+
+// Marquer un message comme lu
+const markAsRead = () => {
+  if (currentMessage.value && !currentMessage.value.isError && !currentMessage.value.isInfo) {
+    saveLastReadMessage(currentMessage.value.id)
+    showBanner.value = false
+
+    const nextUnread = findUnreadMessage(messages.value)
+    if (nextUnread) {
+      setTimeout(() => {
+        currentMessage.value = nextUnread
+        showBanner.value = true
+      }, 300)
+    }
+  } else if (currentMessage.value && (currentMessage.value.isError || currentMessage.value.isInfo)) {
+    showBanner.value = false
+  }
+}
+
+// Fermer la bannière temporairement
+const closeBanner = () => {
+  showBanner.value = false
+}
+
+// Rouvrir la bannière
+const reopenBanner = () => {
+  // Au clic, TOUJOURS ouvrir (ignore autoOpen et autoOpenWhenEmpty)
+  if (messages.value.length > 0) {
+    // Des messages existent : afficher le premier
+    currentMessage.value = messages.value[0]
+    showBanner.value = true
+  } else {
+    // Aucun message : toujours afficher un placeholder
+    currentMessage.value = {
+      id: 'no-message-info',
+      datetime: new Date().toISOString(),
+      expiryDate: new Date(Date.now() + 3600000).toISOString(),
+      content: props.textNoMessageAvailable,
+      isInfo: true
+    }
+    showBanner.value = true
+  }
+}
+
+// Vérifier si un message a été lu
+const isMessageRead = (messageId) => {
+  if (!lastReadMessageId.value) return false
+
+  const messageIndex = messages.value.findIndex(msg => msg.id === messageId)
+  const lastReadIndex = messages.value.findIndex(msg => msg.id === lastReadMessageId.value)
+
+  if (messageIndex === -1 || lastReadIndex === -1) return false
+
+  return messageIndex >= lastReadIndex
+}
+
+// Formater le contenu du message (Markdown)
+const formatMessageContent = (content) => {
+  if (!content) return ''
+
+  if (props.enableMarkdown) {
+    if (props.fullMarkdown) {
+      return marked(content)
+    } else {
+      let formatted = content
+      formatted = formatted.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+      formatted = formatted.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      formatted = formatted.replace(/\*([^*]+)\*/g, '<em>$1</em>')
+      return formatted
+    }
+  } else {
+    return content.replace(
+      /(https?:\/\/[^\s]+)/g,
+      '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
+    )
+  }
+}
+
+// Formater la date
+const formatDate = (dateStr) => {
+  const date = new Date(dateStr)
+  return date.toLocaleDateString('fr-FR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+// ============================================================
+// COMPUTED
+// ============================================================
+const shouldShowBanner = computed(() => showBanner.value && currentMessage.value)
+
+const formattedMessage = computed(() => {
+  if (!currentMessage.value) return ''
+  return formatMessageContent(currentMessage.value.content)
+})
+
+const hasLastMessage = computed(() => hasEverFetched.value || messages.value.length > 0)
+
+const hasHistory = computed(() => messages.value.length > 1)
+
+const historyMessages = computed(() => {
+  return messages.value.slice(0, props.maxHistory)
+})
+
+// Exposer les props de textes pour le template (compatibilité)
+const textBtnRead = computed(() => props.textBtnRead)
+const textBtnClose = computed(() => props.textBtnClose)
+const textBtnHistory = computed(() => props.textBtnHistory)
+const textBtnReopenDefault = computed(() => props.textBtnReopenDefault)
+const textTooltipHistory = computed(() => props.textTooltipHistory)
+const textTooltipReopen = computed(() => props.textTooltipReopen)
+const textHistoryTitle = computed(() => props.textHistoryTitle)
+const textHistoryReadBadge = computed(() => props.textHistoryReadBadge)
+const textHistoryEmpty = computed(() => props.textHistoryEmpty)
+
+// ============================================================
+// LIFECYCLE
+// ============================================================
+onMounted(() => {
+  loadLastReadMessage()
+  initMessages()
+})
+</script>
+
 <template>
   <!-- Mode bannière fixe -->
   <div v-if="displayMode === 'banner' && shouldShowBanner"
@@ -116,513 +617,6 @@
     </slot>
   </button>
 </template>
-
-<script>
-import { ref, computed, onMounted } from 'vue'
-import { marked } from 'marked'
-
-// ============================================================
-// TEXTES PAR DÉFAUT (Internationalisables)
-// ============================================================
-const DEFAULT_TEXTS = {
-  // Boutons d'action
-  btnRead: '✓ Lu',
-  btnClose: '✕',
-  btnHistory: '📋',
-  btnReopenDefault: '💬 Messages',
-
-  // Tooltips
-  tooltipHistory: 'Voir l\'historique',
-  tooltipReopen: 'Afficher le dernier message',
-
-  // Modal historique
-  historyTitle: 'Historique des messages',
-  historyReadBadge: 'Lu',
-  historyEmpty: 'Aucun message dans l\'historique',
-
-  // Messages système
-  noMessageAvailable: 'Aucun message disponible pour le moment.',
-  defaultError: 'Impossible de charger les messages. Veuillez réessayer plus tard.'
-}
-
-export default {
-  name: 'MessageBanner',
-  props: {
-    primaryUrl: {
-      type: String,
-      required: true
-    },
-    secondaryUrl: {
-      type: String,
-      required: true
-    },
-    enableMarkdown: {
-      type: Boolean,
-      default: false
-    },
-    fullMarkdown: {
-      type: Boolean,
-      default: false
-    },
-    maxHistory: {
-      type: Number,
-      default: 10
-    },
-    position: {
-      type: String,
-      default: 'top',
-      validator: (value) => ['top', 'bottom'].includes(value)
-    },
-    displayMode: {
-      type: String,
-      default: 'banner',
-      validator: (value) => ['banner', 'inline'].includes(value)
-    },
-    errorMessage: {
-      type: String,
-      default: DEFAULT_TEXTS.defaultError
-    },
-    autoOpen: {
-      type: Boolean,
-      default: true
-    },
-    autoOpenWhenEmpty: {
-      type: Boolean,
-      default: true
-    },
-    // Props pour internationalisation (i18n)
-    textBtnRead: {
-      type: String,
-      default: DEFAULT_TEXTS.btnRead
-    },
-    textBtnClose: {
-      type: String,
-      default: DEFAULT_TEXTS.btnClose
-    },
-    textBtnHistory: {
-      type: String,
-      default: DEFAULT_TEXTS.btnHistory
-    },
-    textBtnReopenDefault: {
-      type: String,
-      default: DEFAULT_TEXTS.btnReopenDefault
-    },
-    textTooltipHistory: {
-      type: String,
-      default: DEFAULT_TEXTS.tooltipHistory
-    },
-    textTooltipReopen: {
-      type: String,
-      default: DEFAULT_TEXTS.tooltipReopen
-    },
-    textHistoryTitle: {
-      type: String,
-      default: DEFAULT_TEXTS.historyTitle
-    },
-    textHistoryReadBadge: {
-      type: String,
-      default: DEFAULT_TEXTS.historyReadBadge
-    },
-    textHistoryEmpty: {
-      type: String,
-      default: DEFAULT_TEXTS.historyEmpty
-    },
-    textNoMessageAvailable: {
-      type: String,
-      default: DEFAULT_TEXTS.noMessageAvailable
-    },
-    textDefaultError: {
-      type: String,
-      default: DEFAULT_TEXTS.defaultError
-    },
-    // Props pour personnaliser les classes CSS
-    bannerClass: {
-      type: String,
-      default: ''
-    },
-    inlineClass: {
-      type: String,
-      default: ''
-    },
-    inlineContainerClass: {
-      type: String,
-      default: ''
-    },
-    buttonClass: {
-      type: String,
-      default: ''
-    },
-    reopenButtonClass: {
-      type: String,
-      default: ''
-    },
-    // Props pour styles inline (sans !important)
-    bannerStyle: {
-      type: Object,
-      default: () => ({})
-    },
-    inlineStyle: {
-      type: Object,
-      default: () => ({})
-    },
-    inlineContainerStyle: {
-      type: Object,
-      default: () => ({})
-    },
-    buttonStyle: {
-      type: Object,
-      default: () => ({})
-    },
-    reopenButtonStyle: {
-      type: Object,
-      default: () => ({})
-    }
-  },
-  setup(props) {
-    const messages = ref([])
-    const currentMessage = ref(null)
-    const showBanner = ref(false)
-    const showHistoryModal = ref(false)
-    const lastReadMessageId = ref(null)
-    const fetchError = ref(false)
-    const hasEverFetched = ref(false)
-
-    // Clé pour localStorage - ne garde que le dernier message lu
-    const STORAGE_KEY = 'message-banner-last-read'
-
-    // Charger le dernier message lu depuis localStorage
-    const loadLastReadMessage = () => {
-      try {
-        const stored = localStorage.getItem(STORAGE_KEY)
-        if (stored) {
-          lastReadMessageId.value = stored
-        }
-      } catch (error) {
-        console.error('Erreur lors du chargement du dernier message lu:', error)
-      }
-    }
-
-    // Sauvegarder le dernier message lu dans localStorage
-    const saveLastReadMessage = (messageId) => {
-      try {
-        localStorage.setItem(STORAGE_KEY, messageId)
-        lastReadMessageId.value = messageId
-      } catch (error) {
-        console.error('Erreur lors de la sauvegarde du dernier message lu:', error)
-      }
-    }
-
-    // Fetch des messages avec fallback
-    const fetchMessages = async () => {
-      fetchError.value = false
-
-      // Helper pour parser JSON avec gestion d'erreurs
-      const parseJSON = (text, source) => {
-        if (!text || text.trim() === '') {
-          return { messages: [], error: false, isEmpty: true }
-        }
-        try {
-          const data = JSON.parse(text)
-          return { messages: data.messages || [], error: false, isEmpty: false }
-        } catch (parseError) {
-          console.error(`Erreur de parsing JSON (${source}):`, parseError.message)
-          return { messages: [], error: true, parseError: true }
-        }
-      }
-
-      // Helper pour fetch avec gestion complète des erreurs
-      const fetchURL = async (url, source) => {
-        try {
-          const response = await fetch(url)
-
-          // Fichier trouvé
-          if (response.ok) {
-            const text = await response.text()
-            const result = parseJSON(text, source)
-
-            if (result.isEmpty) {
-              console.info(`Fichier ${source} vide, aucun message disponible`)
-              return { messages: [], error: false, notFound: false }
-            }
-
-            if (result.parseError) {
-              return { messages: [], error: true, notFound: false }
-            }
-
-            return { messages: result.messages, error: false, notFound: false }
-          }
-
-          // Fichier absent (404) - pas une vraie erreur
-          if (response.status === 404) {
-            console.info(`Fichier ${source} absent (404)`)
-            return { messages: [], error: false, notFound: true }
-          }
-
-          // Autre erreur HTTP
-          console.error(`Erreur HTTP ${response.status} pour ${source}`)
-          return { messages: [], error: true, notFound: false }
-
-        } catch (networkError) {
-          // Erreur réseau (pas de connexion, CORS, etc.)
-          console.error(`Erreur réseau pour ${source}:`, networkError.message)
-          return { messages: [], error: true, notFound: false }
-        }
-      }
-
-      // Essayer l'URL primaire
-      const primaryResult = await fetchURL(props.primaryUrl, 'primaire')
-
-      // Si succès avec l'URL primaire
-      if (!primaryResult.notFound && primaryResult.messages.length > 0) {
-        return primaryResult
-      }
-
-      // Si l'URL primaire a une vraie erreur (pas juste 404), on signale quand même
-      if (primaryResult.error && !primaryResult.notFound) {
-        console.warn('Problème avec URL primaire, tentative avec URL secondaire')
-      }
-
-      // Essayer l'URL secondaire
-      const secondaryResult = await fetchURL(props.secondaryUrl, 'secondaire')
-
-      // Si succès avec l'URL secondaire
-      if (!secondaryResult.notFound && secondaryResult.messages.length > 0) {
-        return secondaryResult
-      }
-
-      // Les deux fichiers sont absents - comportement normal, pas d'erreur
-      if (primaryResult.notFound && secondaryResult.notFound) {
-        console.info('Aucun fichier de messages disponible (404 sur les deux URLs)')
-        return { messages: [], error: false }
-      }
-
-      // Vraie erreur sur les deux URLs (réseau, parsing, HTTP)
-      if (primaryResult.error && secondaryResult.error) {
-        console.error('Impossible de récupérer les messages depuis les deux URLs')
-        fetchError.value = true
-        return { messages: [], error: true }
-      }
-
-      // Au moins une URL fonctionne mais sans messages
-      return { messages: [], error: false }
-    }
-
-    // Filtrer les messages valides (non expirés)
-    const filterValidMessages = (msgs) => {
-      const now = new Date()
-      return msgs.filter(msg => {
-        const expiryDate = new Date(msg.expiryDate)
-        return expiryDate > now
-      }).sort((a, b) => new Date(b.datetime) - new Date(a.datetime))
-    }
-
-    // Trouver le dernier message non lu
-    const findUnreadMessage = (msgs) => {
-      if (!lastReadMessageId.value) {
-        return msgs[0] || null
-      }
-
-      const lastReadIndex = msgs.findIndex(msg => msg.id === lastReadMessageId.value)
-
-      if (lastReadIndex === -1 || lastReadIndex > 0) {
-        return msgs[0]
-      }
-
-      return null
-    }
-
-    // Initialiser les messages
-    const initMessages = async () => {
-      const result = await fetchMessages()
-      hasEverFetched.value = true
-
-      messages.value = filterValidMessages(result.messages)
-
-      // Si autoOpen = false, ne rien ouvrir au montage
-      if (!props.autoOpen) {
-        showBanner.value = false
-        currentMessage.value = null
-        return
-      }
-
-      // autoOpen = true : vérifier si on a des messages
-      if (messages.value.length > 0) {
-        // Des messages existent : ouvrir avec le premier message
-        currentMessage.value = messages.value[0]
-        showBanner.value = true
-        return
-      }
-
-      // Aucun message disponible
-      // Si autoOpenWhenEmpty = true, ouvrir avec message placeholder
-      if (props.autoOpenWhenEmpty) {
-        // Erreur de récupération
-        if (result.error) {
-          currentMessage.value = {
-            id: 'error-message',
-            datetime: new Date().toISOString(),
-            expiryDate: new Date(Date.now() + 3600000).toISOString(),
-            content: props.errorMessage,
-            isError: true
-          }
-        } else {
-          // Pas d'erreur, juste pas de messages
-          currentMessage.value = {
-            id: 'no-message-info',
-            datetime: new Date().toISOString(),
-            expiryDate: new Date(Date.now() + 3600000).toISOString(),
-            content: props.textNoMessageAvailable,
-            isInfo: true
-          }
-        }
-        showBanner.value = true
-      } else {
-        // autoOpenWhenEmpty = false : rester fermé, juste afficher le bouton
-        showBanner.value = false
-        currentMessage.value = null
-      }
-    }
-
-    // Marquer un message comme lu
-    const markAsRead = () => {
-      if (currentMessage.value && !currentMessage.value.isError && !currentMessage.value.isInfo) {
-        saveLastReadMessage(currentMessage.value.id)
-        showBanner.value = false
-
-        const nextUnread = findUnreadMessage(messages.value)
-        if (nextUnread) {
-          setTimeout(() => {
-            currentMessage.value = nextUnread
-            showBanner.value = true
-          }, 300)
-        }
-      } else if (currentMessage.value && (currentMessage.value.isError || currentMessage.value.isInfo)) {
-        showBanner.value = false
-      }
-    }
-
-    // Fermer la bannière temporairement
-    const closeBanner = () => {
-      showBanner.value = false
-    }
-
-    // Rouvrir la bannière
-    const reopenBanner = () => {
-      // Au clic, TOUJOURS ouvrir (ignore autoOpen et autoOpenWhenEmpty)
-      if (messages.value.length > 0) {
-        // Des messages existent : afficher le premier
-        currentMessage.value = messages.value[0]
-        showBanner.value = true
-      } else {
-        // Aucun message : toujours afficher un placeholder
-        currentMessage.value = {
-          id: 'no-message-info',
-          datetime: new Date().toISOString(),
-          expiryDate: new Date(Date.now() + 3600000).toISOString(),
-          content: props.textNoMessageAvailable,
-          isInfo: true
-        }
-        showBanner.value = true
-      }
-    }
-
-    // Vérifier si un message a été lu
-    const isMessageRead = (messageId) => {
-      if (!lastReadMessageId.value) return false
-
-      const messageIndex = messages.value.findIndex(msg => msg.id === messageId)
-      const lastReadIndex = messages.value.findIndex(msg => msg.id === lastReadMessageId.value)
-
-      if (messageIndex !== -1 && lastReadIndex !== -1) {
-        return messageIndex >= lastReadIndex
-      }
-
-      return messageIndex === -1
-    }
-
-    // Formater le contenu du message
-    const formatMessageContent = (content) => {
-      if (!content) return ''
-
-      if (props.enableMarkdown) {
-        if (props.fullMarkdown) {
-          return marked(content)
-        } else {
-          let formatted = content
-          formatted = formatted.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
-          formatted = formatted.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-          formatted = formatted.replace(/\*([^*]+)\*/g, '<em>$1</em>')
-          return formatted
-        }
-      } else {
-        return content.replace(
-          /(https?:\/\/[^\s]+)/g,
-          '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
-        )
-      }
-    }
-
-    // Formater la date
-    const formatDate = (dateStr) => {
-      const date = new Date(dateStr)
-      return date.toLocaleDateString('fr-FR', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-    }
-
-    // Computed properties
-    const shouldShowBanner = computed(() => showBanner.value && currentMessage.value)
-
-    const formattedMessage = computed(() => {
-      if (!currentMessage.value) return ''
-      return formatMessageContent(currentMessage.value.content)
-    })
-
-    const hasLastMessage = computed(() => hasEverFetched.value || messages.value.length > 0)
-
-    const hasHistory = computed(() => messages.value.length > 1)
-
-    const historyMessages = computed(() => {
-      return messages.value.slice(0, props.maxHistory)
-    })
-
-    // Lifecycle
-    onMounted(() => {
-      loadLastReadMessage()
-      initMessages()
-    })
-
-    return {
-      shouldShowBanner,
-      formattedMessage,
-      showHistoryModal,
-      hasHistory,
-      hasLastMessage,
-      historyMessages,
-      markAsRead,
-      closeBanner,
-      reopenBanner,
-      isMessageRead,
-      formatMessageContent,
-      formatDate,
-      // Exposer les props de textes pour le template
-      textBtnRead: props.textBtnRead,
-      textBtnClose: props.textBtnClose,
-      textBtnHistory: props.textBtnHistory,
-      textBtnReopenDefault: props.textBtnReopenDefault,
-      textTooltipHistory: props.textTooltipHistory,
-      textTooltipReopen: props.textTooltipReopen,
-      textHistoryTitle: props.textHistoryTitle,
-      textHistoryReadBadge: props.textHistoryReadBadge,
-      textHistoryEmpty: props.textHistoryEmpty
-    }
-  }
-}
-</script>
 
 <style lang="scss" scoped>
 // Mode bannière fixe
