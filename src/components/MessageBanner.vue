@@ -1,7 +1,8 @@
 <template>
   <!-- Mode bannière fixe -->
   <div v-if="displayMode === 'banner' && shouldShowBanner"
-       :class="['message-banner', `position-${position}`, bannerClass]">
+       :class="['message-banner', `position-${position}`, bannerClass]"
+       :style="bannerStyle">
     <div class="banner-content">
       <div class="message-text" v-html="formattedMessage"></div>
       <div class="banner-actions">
@@ -9,14 +10,15 @@
           v-if="hasHistory"
           @click="showHistoryModal = true"
           :class="['btn-secondary', buttonClass]"
+          :style="buttonStyle"
           :title="textTooltipHistory"
         >
           {{ textBtnHistory }}
         </button>
-        <button @click="markAsRead" :class="['btn-primary', buttonClass]">
+        <button @click="markAsRead" :class="['btn-primary', buttonClass]" :style="buttonStyle">
           {{ textBtnRead }}
         </button>
-        <button @click="closeBanner" :class="['btn-close', buttonClass]">
+        <button @click="closeBanner" :class="['btn-close', buttonClass]" :style="buttonStyle">
           {{ textBtnClose }}
         </button>
       </div>
@@ -51,22 +53,23 @@
   </div>
 
   <!-- Mode inline -->
-  <div v-if="displayMode === 'inline'" :class="['message-inline-container', inlineContainerClass]">
-    <div v-if="shouldShowBanner" :class="['message-inline', inlineClass]">
+  <div v-if="displayMode === 'inline'" :class="['message-inline-container', inlineContainerClass]" :style="inlineContainerStyle">
+    <div v-if="shouldShowBanner" :class="['message-inline', inlineClass]" :style="inlineStyle">
       <div class="message-text" v-html="formattedMessage"></div>
       <div class="message-actions">
         <button
           v-if="hasHistory"
           @click="showHistoryModal = true"
           :class="['btn-secondary', buttonClass]"
+          :style="buttonStyle"
           :title="textTooltipHistory"
         >
           {{ textBtnHistory }}
         </button>
-        <button @click="markAsRead" :class="['btn-primary', buttonClass]">
+        <button @click="markAsRead" :class="['btn-primary', buttonClass]" :style="buttonStyle">
           {{ textBtnRead }}
         </button>
-        <button @click="closeBanner" :class="['btn-close', buttonClass]">
+        <button @click="closeBanner" :class="['btn-close', buttonClass]" :style="buttonStyle">
           {{ textBtnClose }}
         </button>
       </div>
@@ -105,6 +108,7 @@
     v-if="!shouldShowBanner && hasLastMessage"
     @click="reopenBanner"
     :class="['reopen-button', reopenButtonClass]"
+    :style="reopenButtonStyle"
     :title="textTooltipReopen"
   >
     <slot name="reopen-button-content">
@@ -251,6 +255,27 @@ export default {
     reopenButtonClass: {
       type: String,
       default: ''
+    },
+    // Props pour styles inline (sans !important)
+    bannerStyle: {
+      type: Object,
+      default: () => ({})
+    },
+    inlineStyle: {
+      type: Object,
+      default: () => ({})
+    },
+    inlineContainerStyle: {
+      type: Object,
+      default: () => ({})
+    },
+    buttonStyle: {
+      type: Object,
+      default: () => ({})
+    },
+    reopenButtonStyle: {
+      type: Object,
+      default: () => ({})
     }
   },
   setup(props) {
@@ -605,10 +630,10 @@ export default {
   position: fixed;
   left: 0;
   right: 0;
-  z-index: 1000;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: var(--banner-z-index, 1000);
+  background: var(--banner-bg, linear-gradient(135deg, #667eea 0%, #764ba2 100%));
+  color: var(--banner-color, white);
+  box-shadow: var(--banner-shadow, 0 4px 12px rgba(0, 0, 0, 0.15));
   animation: slideIn 0.3s ease-out;
 
   &.position-top {
@@ -634,9 +659,9 @@ export default {
 .banner-content {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0.875rem 1rem;
-  max-width: 1200px;
+  gap: var(--banner-gap, 1rem);
+  padding: var(--banner-padding, 0.875rem 1rem);
+  max-width: var(--banner-max-width, 1200px);
   margin: 0 auto;
 
   @media (max-width: 768px) {
@@ -652,12 +677,12 @@ export default {
 }
 
 .message-inline {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: var(--inline-bg, linear-gradient(135deg, #667eea 0%, #764ba2 100%));
+  color: var(--inline-color, white);
+  border-radius: var(--inline-radius, 8px);
+  padding: var(--inline-padding, 1rem);
+  margin-bottom: var(--inline-margin-bottom, 1rem);
+  box-shadow: var(--inline-shadow, 0 2px 8px rgba(0, 0, 0, 0.1));
   animation: fadeIn 0.3s ease-out;
 
   .message-text {
@@ -719,7 +744,7 @@ button {
   border: none;
   cursor: pointer;
   font-family: inherit;
-  font-size: 0.875rem;
+  font-size: var(--btn-font-size, 0.875rem);
   transition: all 0.2s;
 
   &:hover {
@@ -732,11 +757,11 @@ button {
 }
 
 .btn-primary {
-  background: white;
-  color: #667eea;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  font-weight: 600;
+  background: var(--btn-primary-bg, white);
+  color: var(--btn-primary-color, #667eea);
+  padding: var(--btn-padding, 0.5rem 1rem);
+  border-radius: var(--btn-radius, 6px);
+  font-weight: var(--btn-font-weight, 600);
 
   &:hover {
     background: #f0f0f0;
@@ -744,11 +769,11 @@ button {
 }
 
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  padding: 0.5rem 0.75rem;
-  border-radius: 6px;
-  font-weight: 600;
+  background: var(--btn-secondary-bg, rgba(255, 255, 255, 0.2));
+  color: var(--btn-secondary-color, white);
+  padding: var(--btn-padding, 0.5rem 0.75rem);
+  border-radius: var(--btn-radius, 6px);
+  font-weight: var(--btn-font-weight, 600);
 
   &:hover {
     background: rgba(255, 255, 255, 0.3);
@@ -756,12 +781,12 @@ button {
 }
 
 .btn-close {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  padding: 0.5rem 0.75rem;
-  border-radius: 6px;
-  font-weight: 600;
-  font-size: 1.1rem;
+  background: var(--btn-close-bg, rgba(255, 255, 255, 0.2));
+  color: var(--btn-close-color, white);
+  padding: var(--btn-padding, 0.5rem 0.75rem);
+  border-radius: var(--btn-radius, 6px);
+  font-weight: var(--btn-font-weight, 600);
+  font-size: var(--btn-close-font-size, 1.1rem);
   line-height: 1;
 
   &:hover {
@@ -914,13 +939,13 @@ button {
 
 // Bouton de réouverture (simple bouton)
 .reopen-button {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-  font-weight: 600;
-  font-size: 0.95rem;
+  background: var(--reopen-btn-bg, linear-gradient(135deg, #667eea 0%, #764ba2 100%));
+  color: var(--reopen-btn-color, white);
+  padding: var(--reopen-btn-padding, 0.75rem 1.5rem);
+  border-radius: var(--reopen-btn-radius, 8px);
+  box-shadow: var(--reopen-btn-shadow, 0 2px 8px rgba(102, 126, 234, 0.3));
+  font-weight: var(--reopen-btn-font-weight, 600);
+  font-size: var(--reopen-btn-font-size, 0.95rem);
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;

@@ -159,6 +159,87 @@ Tous les textes sont personnalisables via props pour supporter plusieurs langues
 
 **Note** : Tous les textes ont des valeurs par défaut en français. Les textes par défaut sont regroupés dans la constante `DEFAULT_TEXTS` en tête du fichier composant pour faciliter la maintenance.
 
+### Styling avancé (sans !important)
+
+Deux méthodes pour personnaliser les styles **sans utiliser `!important`** :
+
+#### Méthode 1 : Props de style inline
+
+```vue
+<template>
+  <MessageBanner
+    primary-url="/messages.json"
+    secondary-url="/messages-backup.json"
+
+    :banner-style="{
+      background: 'linear-gradient(to right, #ff6b6b, #ee5a6f)',
+      fontSize: '18px',
+      padding: '20px'
+    }"
+
+    :button-style="{
+      borderRadius: '20px',
+      textTransform: 'uppercase',
+      fontWeight: 'bold'
+    }"
+
+    :reopen-button-style="{
+      background: '#ff5722',
+      padding: '1rem 2rem',
+      borderRadius: '30px'
+    }"
+  />
+</template>
+```
+
+#### Méthode 2 : CSS Variables
+
+Le composant utilise des CSS variables que vous pouvez surcharger dans votre parent :
+
+```vue
+<template>
+  <div class="mon-app">
+    <MessageBanner ... />
+  </div>
+</template>
+
+<style>
+.mon-app {
+  /* Bannière */
+  --banner-bg: linear-gradient(to right, #ff6b6b, #ee5a6f);
+  --banner-color: white;
+  --banner-padding: 2rem;
+  --banner-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  --banner-z-index: 9999;
+
+  /* Inline */
+  --inline-bg: linear-gradient(to right, #4caf50, #45a049);
+  --inline-radius: 12px;
+  --inline-padding: 1.5rem;
+
+  /* Boutons */
+  --btn-primary-bg: #ff5722;
+  --btn-primary-color: white;
+  --btn-radius: 20px;
+  --btn-padding: 0.75rem 1.5rem;
+  --btn-font-size: 1rem;
+  --btn-font-weight: bold;
+
+  /* Bouton réouverture */
+  --reopen-btn-bg: #2196f3;
+  --reopen-btn-padding: 1rem 2rem;
+  --reopen-btn-radius: 30px;
+  --reopen-btn-shadow: 0 4px 16px rgba(33, 150, 243, 0.4);
+}
+</style>
+```
+
+**Variables CSS disponibles** :
+- Bannière : `--banner-bg`, `--banner-color`, `--banner-padding`, `--banner-shadow`, `--banner-z-index`, `--banner-gap`, `--banner-max-width`
+- Inline : `--inline-bg`, `--inline-color`, `--inline-radius`, `--inline-padding`, `--inline-margin-bottom`, `--inline-shadow`
+- Boutons : `--btn-font-size`, `--btn-padding`, `--btn-radius`, `--btn-font-weight`, `--btn-primary-bg`, `--btn-primary-color`, `--btn-secondary-bg`, `--btn-secondary-color`, `--btn-close-bg`, `--btn-close-color`, `--btn-close-font-size`
+- Bouton réouverture : `--reopen-btn-bg`, `--reopen-btn-color`, `--reopen-btn-padding`, `--reopen-btn-radius`, `--reopen-btn-shadow`, `--reopen-btn-font-weight`, `--reopen-btn-font-size`
+
 ## Props disponibles
 
 | Prop | Type | Défaut | Description |
@@ -182,6 +263,12 @@ Tous les textes sont personnalisables via props pour supporter plusieurs langues
 | `inlineContainerClass` | String | `''` | Classe CSS personnalisée pour le conteneur inline |
 | `buttonClass` | String | `''` | Classe CSS personnalisée pour les boutons (Lu, Historique, Fermer) |
 | `reopenButtonClass` | String | `''` | Classe CSS personnalisée pour le bouton de réouverture |
+| **Styles inline (sans !important)** | | | |
+| `bannerStyle` | Object | `{}` | Styles inline pour la bannière (mode banner) |
+| `inlineStyle` | Object | `{}` | Styles inline pour le message (mode inline) |
+| `inlineContainerStyle` | Object | `{}` | Styles inline pour le conteneur (mode inline) |
+| `buttonStyle` | Object | `{}` | Styles inline pour les boutons d'action |
+| `reopenButtonStyle` | Object | `{}` | Styles inline pour le bouton de réouverture |
 | **Internationalisation (i18n)** | | | |
 | `textBtnRead` | String | `'✓ Lu'` | Texte du bouton "Lu" |
 | `textBtnClose` | String | `'✕'` | Texte du bouton "Fermer" |
