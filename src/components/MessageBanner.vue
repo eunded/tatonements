@@ -3,31 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { marked } from 'marked'
 
 // ============================================================
-// TEXTES PAR DÉFAUT (Internationalisables)
-// ============================================================
-const DEFAULT_TEXTS = {
-  // Boutons d'action
-  btnRead: '✓ Lu',
-  btnClose: '✕',
-  btnHistory: '📋',
-  btnReopenDefault: '💬 Messages',
-
-  // Tooltips
-  tooltipHistory: 'Voir l\'historique',
-  tooltipReopen: 'Afficher le dernier message',
-
-  // Modal historique
-  historyTitle: 'Historique des messages',
-  historyReadBadge: 'Lu',
-  historyEmpty: 'Aucun message dans l\'historique',
-
-  // Messages système
-  noMessageAvailable: 'Aucun message disponible pour le moment.',
-  defaultError: 'Impossible de charger les messages. Veuillez réessayer plus tard.'
-}
-
-// ============================================================
-// PROPS
+// PROPS (Textes par défaut en français - voir default values ci-dessous)
 // ============================================================
 const props = defineProps({
   primaryUrl: {
@@ -62,7 +38,7 @@ const props = defineProps({
   },
   errorMessage: {
     type: String,
-    default: DEFAULT_TEXTS.defaultError
+    default: 'Impossible de charger les messages. Veuillez réessayer plus tard.'
   },
   autoOpen: {
     type: Boolean,
@@ -75,47 +51,47 @@ const props = defineProps({
   // Props pour internationalisation (i18n)
   textBtnRead: {
     type: String,
-    default: DEFAULT_TEXTS.btnRead
+    default: '✓ Lu'
   },
   textBtnClose: {
     type: String,
-    default: DEFAULT_TEXTS.btnClose
+    default: '✕'
   },
   textBtnHistory: {
     type: String,
-    default: DEFAULT_TEXTS.btnHistory
+    default: '📋'
   },
   textBtnReopenDefault: {
     type: String,
-    default: DEFAULT_TEXTS.btnReopenDefault
+    default: '💬 Messages'
   },
   textTooltipHistory: {
     type: String,
-    default: DEFAULT_TEXTS.tooltipHistory
+    default: 'Voir l\'historique'
   },
   textTooltipReopen: {
     type: String,
-    default: DEFAULT_TEXTS.tooltipReopen
+    default: 'Afficher le dernier message'
   },
   textHistoryTitle: {
     type: String,
-    default: DEFAULT_TEXTS.historyTitle
+    default: 'Historique des messages'
   },
   textHistoryReadBadge: {
     type: String,
-    default: DEFAULT_TEXTS.historyReadBadge
+    default: 'Lu'
   },
   textHistoryEmpty: {
     type: String,
-    default: DEFAULT_TEXTS.historyEmpty
+    default: 'Aucun message dans l\'historique'
   },
   textNoMessageAvailable: {
     type: String,
-    default: DEFAULT_TEXTS.noMessageAvailable
+    default: 'Aucun message disponible pour le moment.'
   },
   textDefaultError: {
     type: String,
-    default: DEFAULT_TEXTS.defaultError
+    default: 'Impossible de charger les messages. Veuillez réessayer plus tard.'
   },
   // Props pour personnaliser les classes CSS
   bannerClass: {

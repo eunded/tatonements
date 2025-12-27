@@ -157,7 +157,7 @@ Tous les textes sont personnalisables via props pour supporter plusieurs langues
 </template>
 ```
 
-**Note** : Tous les textes ont des valeurs par défaut en français. Les textes par défaut sont regroupés dans la constante `DEFAULT_TEXTS` en tête du fichier composant pour faciliter la maintenance.
+**Note** : Tous les textes ont des valeurs par défaut en français, définies directement dans `defineProps()` (voir table props ci-dessous).
 
 ### Styling avancé (sans !important)
 
