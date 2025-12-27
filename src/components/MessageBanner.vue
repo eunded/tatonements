@@ -9,15 +9,15 @@
           v-if="hasHistory"
           @click="showHistoryModal = true"
           :class="['btn-secondary', buttonClass]"
-          title="Voir l'historique"
+          :title="textTooltipHistory"
         >
-          📋
+          {{ textBtnHistory }}
         </button>
         <button @click="markAsRead" :class="['btn-primary', buttonClass]">
-          ✓ Lu
+          {{ textBtnRead }}
         </button>
         <button @click="closeBanner" :class="['btn-close', buttonClass]">
-          ✕
+          {{ textBtnClose }}
         </button>
       </div>
     </div>
@@ -26,8 +26,8 @@
     <div v-if="showHistoryModal" class="modal-overlay" @click.self="showHistoryModal = false">
       <div class="modal-content">
         <div class="modal-header">
-          <h3>Historique des messages</h3>
-          <button @click="showHistoryModal = false" class="btn-close">✕</button>
+          <h3>{{ textHistoryTitle }}</h3>
+          <button @click="showHistoryModal = false" class="btn-close">{{ textBtnClose }}</button>
         </div>
         <div class="modal-body">
           <div
@@ -38,12 +38,12 @@
           >
             <div class="history-date">
               {{ formatDate(msg.datetime) }}
-              <span v-if="isMessageRead(msg.id)" class="read-badge">Lu</span>
+              <span v-if="isMessageRead(msg.id)" class="read-badge">{{ textHistoryReadBadge }}</span>
             </div>
             <div class="history-content" v-html="formatMessageContent(msg.content)"></div>
           </div>
           <div v-if="historyMessages.length === 0" class="no-history">
-            Aucun message dans l'historique
+            {{ textHistoryEmpty }}
           </div>
         </div>
       </div>
@@ -59,15 +59,15 @@
           v-if="hasHistory"
           @click="showHistoryModal = true"
           :class="['btn-secondary', buttonClass]"
-          title="Voir l'historique"
+          :title="textTooltipHistory"
         >
-          📋
+          {{ textBtnHistory }}
         </button>
         <button @click="markAsRead" :class="['btn-primary', buttonClass]">
-          ✓ Lu
+          {{ textBtnRead }}
         </button>
         <button @click="closeBanner" :class="['btn-close', buttonClass]">
-          ✕
+          {{ textBtnClose }}
         </button>
       </div>
     </div>
@@ -76,8 +76,8 @@
     <div v-if="showHistoryModal" class="modal-overlay" @click.self="showHistoryModal = false">
       <div class="modal-content">
         <div class="modal-header">
-          <h3>Historique des messages</h3>
-          <button @click="showHistoryModal = false" class="btn-close">✕</button>
+          <h3>{{ textHistoryTitle }}</h3>
+          <button @click="showHistoryModal = false" class="btn-close">{{ textBtnClose }}</button>
         </div>
         <div class="modal-body">
           <div
@@ -88,12 +88,12 @@
           >
             <div class="history-date">
               {{ formatDate(msg.datetime) }}
-              <span v-if="isMessageRead(msg.id)" class="read-badge">Lu</span>
+              <span v-if="isMessageRead(msg.id)" class="read-badge">{{ textHistoryReadBadge }}</span>
             </div>
             <div class="history-content" v-html="formatMessageContent(msg.content)"></div>
           </div>
           <div v-if="historyMessages.length === 0" class="no-history">
-            Aucun message dans l'historique
+            {{ textHistoryEmpty }}
           </div>
         </div>
       </div>
@@ -105,10 +105,10 @@
     v-if="!shouldShowBanner && hasLastMessage"
     @click="reopenBanner"
     :class="['reopen-button', reopenButtonClass]"
-    title="Afficher le dernier message"
+    :title="textTooltipReopen"
   >
     <slot name="reopen-button-content">
-      💬 Messages
+      {{ textBtnReopenDefault }}
     </slot>
   </button>
 </template>
@@ -116,6 +116,30 @@
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { marked } from 'marked'
+
+// ============================================================
+// TEXTES PAR DÉFAUT (Internationalisables)
+// ============================================================
+const DEFAULT_TEXTS = {
+  // Boutons d'action
+  btnRead: '✓ Lu',
+  btnClose: '✕',
+  btnHistory: '📋',
+  btnReopenDefault: '💬 Messages',
+
+  // Tooltips
+  tooltipHistory: 'Voir l\'historique',
+  tooltipReopen: 'Afficher le dernier message',
+
+  // Modal historique
+  historyTitle: 'Historique des messages',
+  historyReadBadge: 'Lu',
+  historyEmpty: 'Aucun message dans l\'historique',
+
+  // Messages système
+  noMessageAvailable: 'Aucun message disponible pour le moment.',
+  defaultError: 'Impossible de charger les messages. Veuillez réessayer plus tard.'
+}
 
 export default {
   name: 'MessageBanner',
@@ -152,7 +176,7 @@ export default {
     },
     errorMessage: {
       type: String,
-      default: 'Impossible de charger les messages. Veuillez réessayer plus tard.'
+      default: DEFAULT_TEXTS.defaultError
     },
     autoOpen: {
       type: Boolean,
@@ -161,6 +185,51 @@ export default {
     autoOpenWhenEmpty: {
       type: Boolean,
       default: true
+    },
+    // Props pour internationalisation (i18n)
+    textBtnRead: {
+      type: String,
+      default: DEFAULT_TEXTS.btnRead
+    },
+    textBtnClose: {
+      type: String,
+      default: DEFAULT_TEXTS.btnClose
+    },
+    textBtnHistory: {
+      type: String,
+      default: DEFAULT_TEXTS.btnHistory
+    },
+    textBtnReopenDefault: {
+      type: String,
+      default: DEFAULT_TEXTS.btnReopenDefault
+    },
+    textTooltipHistory: {
+      type: String,
+      default: DEFAULT_TEXTS.tooltipHistory
+    },
+    textTooltipReopen: {
+      type: String,
+      default: DEFAULT_TEXTS.tooltipReopen
+    },
+    textHistoryTitle: {
+      type: String,
+      default: DEFAULT_TEXTS.historyTitle
+    },
+    textHistoryReadBadge: {
+      type: String,
+      default: DEFAULT_TEXTS.historyReadBadge
+    },
+    textHistoryEmpty: {
+      type: String,
+      default: DEFAULT_TEXTS.historyEmpty
+    },
+    textNoMessageAvailable: {
+      type: String,
+      default: DEFAULT_TEXTS.noMessageAvailable
+    },
+    textDefaultError: {
+      type: String,
+      default: DEFAULT_TEXTS.defaultError
     },
     // Props pour personnaliser les classes CSS
     bannerClass: {
@@ -377,7 +446,7 @@ export default {
             id: 'no-message-info',
             datetime: new Date().toISOString(),
             expiryDate: new Date(Date.now() + 3600000).toISOString(),
-            content: 'Aucun message disponible pour le moment.',
+            content: props.textNoMessageAvailable,
             isInfo: true
           }
         }
@@ -425,7 +494,7 @@ export default {
           id: 'no-message-info',
           datetime: new Date().toISOString(),
           expiryDate: new Date(Date.now() + 3600000).toISOString(),
-          content: 'Aucun message disponible pour le moment.',
+          content: props.textNoMessageAvailable,
           isInfo: true
         }
         showBanner.value = true
@@ -514,7 +583,17 @@ export default {
       reopenBanner,
       isMessageRead,
       formatMessageContent,
-      formatDate
+      formatDate,
+      // Exposer les props de textes pour le template
+      textBtnRead: props.textBtnRead,
+      textBtnClose: props.textBtnClose,
+      textBtnHistory: props.textBtnHistory,
+      textBtnReopenDefault: props.textBtnReopenDefault,
+      textTooltipHistory: props.textTooltipHistory,
+      textTooltipReopen: props.textTooltipReopen,
+      textHistoryTitle: props.textHistoryTitle,
+      textHistoryReadBadge: props.textHistoryReadBadge,
+      textHistoryEmpty: props.textHistoryEmpty
     }
   }
 }

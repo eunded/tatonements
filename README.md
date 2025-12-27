@@ -129,6 +129,36 @@ export default {
 </style>
 ```
 
+### Internationalisation (i18n)
+
+Tous les textes sont personnalisables via props pour supporter plusieurs langues :
+
+```vue
+<template>
+  <MessageBanner
+    primary-url="/messages-primary.json"
+    secondary-url="/messages-secondary.json"
+
+    text-btn-read="✓ Read"
+    text-btn-close="✕"
+    text-btn-history="📋"
+    text-tooltip-history="View history"
+    text-tooltip-reopen="Show last message"
+    text-history-title="Message History"
+    text-history-read-badge="Read"
+    text-history-empty="No messages in history"
+    text-no-message-available="No messages available at the moment."
+    error-message="Unable to load messages. Please try again later."
+  >
+    <template #reopen-button-content>
+      💬 Messages
+    </template>
+  </MessageBanner>
+</template>
+```
+
+**Note** : Tous les textes ont des valeurs par défaut en français. Les textes par défaut sont regroupés dans la constante `DEFAULT_TEXTS` en tête du fichier composant pour faciliter la maintenance.
+
 ## Props disponibles
 
 | Prop | Type | Défaut | Description |
@@ -152,6 +182,18 @@ export default {
 | `inlineContainerClass` | String | `''` | Classe CSS personnalisée pour le conteneur inline |
 | `buttonClass` | String | `''` | Classe CSS personnalisée pour les boutons (Lu, Historique, Fermer) |
 | `reopenButtonClass` | String | `''` | Classe CSS personnalisée pour le bouton de réouverture |
+| **Internationalisation (i18n)** | | | |
+| `textBtnRead` | String | `'✓ Lu'` | Texte du bouton "Lu" |
+| `textBtnClose` | String | `'✕'` | Texte du bouton "Fermer" |
+| `textBtnHistory` | String | `'📋'` | Texte/icône du bouton "Historique" |
+| `textBtnReopenDefault` | String | `'💬 Messages'` | Contenu par défaut du bouton réouverture (si pas de slot) |
+| `textTooltipHistory` | String | `'Voir l\'historique'` | Tooltip du bouton historique |
+| `textTooltipReopen` | String | `'Afficher le dernier message'` | Tooltip du bouton réouverture |
+| `textHistoryTitle` | String | `'Historique des messages'` | Titre de la modale historique |
+| `textHistoryReadBadge` | String | `'Lu'` | Badge "Lu" dans l'historique |
+| `textHistoryEmpty` | String | `'Aucun message dans l\'historique'` | Message si historique vide |
+| `textNoMessageAvailable` | String | `'Aucun message disponible...'` | Message placeholder si aucun message |
+| `textDefaultError` | String | `'Impossible de charger...'` | Message d'erreur par défaut (alias de `errorMessage`) |
 
 ## Slots disponibles
 
